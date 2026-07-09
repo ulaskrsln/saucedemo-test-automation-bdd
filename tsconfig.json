@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "features/**/*.ts",
+    "steps/**/*.ts",
+    "pages/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
