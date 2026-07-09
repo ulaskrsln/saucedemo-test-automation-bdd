@@ -10,9 +10,11 @@ let loginPage: LoginPage;
 
 // Test İzolasayonu (State Isolation): Her bir "Scenario" başlamadan önce temiz bir tarayıcı açar.
 Before(async function () {
+    // GitHub Actions "CI" adında gizli bir ortam değişkeni tutar. 
+    // Eğer kod CI'da koşuyorsa headless: true olur, senin bilgisayarındaysa false olur.
     const isCI = process.env.CI ? true : false;
-    // Tarayıcının açılışını ve işlemlerini canlı izlemek için headless: false yapıyoruz.
-    browser = await chromium.launch({ headless: isCI  }); 
+    
+    browser = await chromium.launch({ headless: isCI }); 
     page = await browser.newPage();
     loginPage = new LoginPage(page);
 });
@@ -53,3 +55,7 @@ Then('I should see {string}', async function (expectedResult: string) {
         }
     }
 });
+
+// Export shared test context so other step definition files can reuse the same
+// browser/page instances created in the Before hook above.
+export { browser, page, loginPage };
