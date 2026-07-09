@@ -10,8 +10,9 @@ let loginPage: LoginPage;
 
 // Test İzolasayonu (State Isolation): Her bir "Scenario" başlamadan önce temiz bir tarayıcı açar.
 Before(async function () {
+    const isCI = process.env.CI ? true : false;
     // Tarayıcının açılışını ve işlemlerini canlı izlemek için headless: false yapıyoruz.
-    browser = await chromium.launch({ headless: false }); 
+    browser = await chromium.launch({ headless: isCI  }); 
     page = await browser.newPage();
     loginPage = new LoginPage(page);
 });

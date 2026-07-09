@@ -3,6 +3,7 @@
     "target": "ES6",
     "module": "CommonJS",
     "moduleResolution": "node16",
+    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
