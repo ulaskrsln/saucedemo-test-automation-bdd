@@ -57,7 +57,7 @@ npx cucumber-js
 
 ## 💡 Geliştirme Yaklaşımı
 
-Bu proje **Pair Programming** metodolojisiyle geliştirildi: mimari tasarım, senaryo kapsamı ve kritik kararlar (ör. World Pattern vs. Global Scope) tarafımca alındı; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlardan (Cursor/Copilot) refaktör desteği alındı. AI, düşünme sürecini değil, yazım hızını destekleyen bir araç olarak kullanıldı.
+Bu proje **Pair Programming** metodolojisiyle geliştirildi: mimari tasarım, senaryo kapsamı ve kritik kararlar (ör. World Pattern vs. Global Scope) tarafımca alındı; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlardan (VSCode/Copilot) refaktör desteği alındı. AI, düşünme sürecini değil, yazım hızını destekleyen bir araç olarak kullanıldı.
 
 ## 🗺 Yol Haritası
 
