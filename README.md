@@ -1,37 +1,70 @@
-
 # SauceDemo E2E Test Framework
-![CI](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions/workflows/playwright.yml/badge.svg)
 
-Modern web otomasyonu için Playwright ve Cucumber (BDD) kullanılarak geliştirilmiş, **World Pattern** ile izole edilmiş bir uçtan uca (E2E) test mimarisi.
+![CI](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions/workflows/playwright.yml/badge.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-Playwright-blue)
+![BDD](https://img.shields.io/badge/BDD-Cucumber.js-brightgreen)
+
+Modern web otomasyonu için **Playwright** ve **Cucumber (BDD)** kullanılarak geliştirilmiş, **World Pattern** ile izole edilmiş, sürdürülebilir bir uçtan uca (E2E) test mimarisi.
 
 ## 🚀 Projenin Amacı
-Bir backend yazılımcısı olarak edindiğim sistem tasarımı ve mimari disiplinini, test otomasyon dünyasına taşıyarak; sürdürülebilir, paralel koşuma hazır ve yüksek kaliteli bir test stratejisi kurmayı hedefliyorum. Bu proje, "sadece test yazmak" değil, **"ölçeklenebilir test framework'leri tasarlamak"** konusundaki yetkinliğimi göstermek için vitrin projemdir.
+
+Bir backend yazılımcısı olarak edindiğim sistem tasarımı ve mimari disiplini, test otomasyonu dünyasına taşıyorum. Bu proje "sadece test yazmak" değil, **ölçeklenebilir, bakımı kolay, CI/CD'ye entegre bir test framework'ü tasarlamak** konusundaki yetkinliğimi göstermek için hazırlanmış bir vitrin projesidir.
 
 ## 🛠 Teknik Yetenekler
+
 - **Framework:** Playwright (TypeScript), Cucumber.js (BDD)
 - **Mimari:** Page Object Model (POM), World Pattern (Dependency Injection)
-- **CI/CD:** GitHub Actions (Build Passing)
-- **Kapsam:** 15+ Senaryo (Happy Path & Edge Cases)
-    - Kullanıcı Kimlik Doğrulama (Login)
-    - Sepet ve Checkout İşlemleri
-    - Dinamik Veri Odaklı Sıralama (Sorting)
+- **CI/CD:** GitHub Actions — her push'ta otomatik test çalıştırma
+- **Kapsam:** 15+ senaryo, happy path ve edge case'leri birlikte kapsıyor
+  - **Kimlik Doğrulama:** Geçerli/geçersiz giriş, kilitli kullanıcı (`locked_out_user`) senaryosu
+  - **Sepet & Checkout:** Ürün ekleme/çıkarma, eksik bilgiyle checkout validasyonu
+  - **Sıralama (Sorting):** Fiyat ve isme göre veri odaklı (Scenario Outline) doğrulama
+
+## 🏗 Mimari Kararlar
+
+- **World Pattern tercih edildi (Global Scope yerine):** Her senaryonun kendi izole context'inde (page, browser instance, test verisi) çalışmasını sağlamak ve testlerin paralel koşulabilirliğini garanti altına almak için. Global state paylaşımı, paralel çalıştırmada test'ler arası veri sızıntısına yol açabiliyor — World Pattern bunu yapı gereği engelliyor.
+- **Page Object Model:** UI elementlerinin ve etkileşim mantığının step definition'lardan ayrıştırılması; selector değişikliklerinin tek bir yerden yönetilmesi.
 
 ## 📊 Test Raporu & CI/CD
-<img width="459" height="313" alt="{021AD58B-3EB1-480D-A645-E72B4863B159}" src="https://github.com/user-attachments/assets/b1cbe53b-241f-4f71-93df-7d36addd021d" />
 
-<img width="542" height="251" alt="{673BC2DB-E480-4A3D-A8A5-5572A69271EA}" src="https://github.com/user-attachments/assets/b45ded9a-3c7d-46a3-a119-2c0e20b56588" />
+CI durumunu ve çalışan test sürecini canlı olarak buradan takip edebilirsiniz:
+👉 [GitHub Actions — Çalışma Geçmişi](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions)
 
-<img width="497" height="332" alt="{65BB4870-F99A-41E3-A0D5-A5536FEF8A0D}" src="https://github.com/user-attachments/assets/a7d0bb60-1530-4c53-98a9-28bcb817d34a" />
+<img width="459" height="313" alt="Test raporu 1" src="https://github.com/user-attachments/assets/b1cbe53b-241f-4f71-93df-7d36addd021d" />
+<img width="542" height="251" alt="Test raporu 2" src="https://github.com/user-attachments/assets/b45ded9a-3c7d-46a3-a119-2c0e20b56588" />
+<img width="497" height="332" alt="Test raporu 3" src="https://github.com/user-attachments/assets/a7d0bb60-1530-4c53-98a9-28bcb817d34a" />
+<img width="482" height="241" alt="Test raporu 4" src="https://github.com/user-attachments/assets/5c2d66f5-666a-40bd-8583-b27aa0e42af9" />
 
-<img width="482" height="241" alt="{2BE83EF6-6D6A-42E5-9E80-C89D46F7DE8D}" src="https://github.com/user-attachments/assets/5c2d66f5-666a-40bd-8583-b27aa0e42af9" />
+## 📂 Klasör Yapısı
 
-https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions
+```
+├── features/   # BDD Gherkin senaryoları (.feature)
+├── pages/      # Page Object sınıfları
+├── steps/      # Step definition'lar (senaryo implementasyonu)
+├── support/    # World tanımı, hooks, test konfigürasyonu
+└── .github/    # CI/CD workflow (GitHub Actions)
+```
 
-## 💡 Geliştirme Yaklaşımı
-Bu proje, **Pair Programming** metodolojisiyle, mimari tasarımı ve test kapsamı bizzat tarafımca yapılandırılmış; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlar (Cursor/Copilot) ile refaktör edilmiştir. Mimari kararların (World Pattern vs. Global Scope) tamamı, testlerin paralelleştirilebilirliğini sağlamak adına şahsım tarafından alınmıştır.
+## 🚀 Kurulum & Çalıştırma
 
-## 🚀 Başlangıç
 ```bash
+git clone https://github.com/ulaskrsln/saucedemo-test-automation-bdd.git
+cd saucedemo-test-automation-bdd
 npm install
 npx playwright install
 npx cucumber-js
+```
+
+## 💡 Geliştirme Yaklaşımı
+
+Bu proje **Pair Programming** metodolojisiyle geliştirildi: mimari tasarım, senaryo kapsamı ve kritik kararlar (ör. World Pattern vs. Global Scope) tarafımca alındı; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlardan (Cursor/Copilot) refaktör desteği alındı. AI, düşünme sürecini değil, yazım hızını destekleyen bir araç olarak kullanıldı.
+
+## 🗺 Yol Haritası
+
+- [ ] API testing katmanı (hibrit UI + API senaryoları)
+- [ ] Paralel koşum kanıtı (CI log/screenshot)
+- [ ] Visual regression testing (Playwright screenshot comparison)
+
+## 📫 İletişim
+
+Sorularınız veya geri bildirimleriniz için bir issue açabilir ya da [GitHub profilimden](https://github.com/ulaskrsln) ulaşabilirsiniz.
