@@ -1,6 +1,6 @@
-![CI](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions/workflows/playwright.yml/badge.svg)
 
 # SauceDemo E2E Test Framework
+![CI](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions/workflows/playwright.yml/badge.svg)
 
 Modern web otomasyonu için Playwright ve Cucumber (BDD) kullanılarak geliştirilmiş, **World Pattern** ile izole edilmiş bir uçtan uca (E2E) test mimarisi.
 
