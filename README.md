@@ -59,11 +59,6 @@ npx cucumber-js
 
 Bu proje **Pair Programming** metodolojisiyle geliştirildi: mimari tasarım, senaryo kapsamı ve kritik kararlar (ör. World Pattern vs. Global Scope) tarafımca alındı; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlardan (VSCode-Gemini/Copilot) refaktör desteği alındı. AI, düşünme sürecini değil, yazım hızını destekleyen bir araç olarak kullanıldı.
 
-## 🗺 Yol Haritası
-
-- [ ] API testing katmanı (hibrit UI + API senaryoları)
-- [ ] Paralel koşum kanıtı (CI log/screenshot)
-- [ ] Visual regression testing (Playwright screenshot comparison)
 
 ## 📫 İletişim
 
