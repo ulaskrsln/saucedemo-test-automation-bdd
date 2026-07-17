@@ -1,92 +1,64 @@
-import { Page, Locator } from '@playwright/test'; // expect'i sildik, çünkü burada yeri yok!
+import { Page, Locator } from '@playwright/test';
 
 export class InventoryPage {
-    readonly page: Page;
-    private readonly cartIcon: Locator;
-    private readonly cartBadge: Locator;
+  readonly page: Page;
+  readonly productImages: Locator;
+  readonly cartIcon: Locator;
+  readonly cartBadge: Locator;
 
-    constructor(page: Page) {
-        this.page = page;
-        this.cartIcon = page.locator('.shopping_cart_link');
-        this.cartBadge = page.locator('.shopping_cart_badge');
-    }
+  constructor(page: Page) {
+    this.page = page;
+    this.productImages = page.locator('.inventory_item_img img');
+    this.cartIcon = page.locator('.shopping_cart_link');
+    this.cartBadge = page.locator('.shopping_cart_badge');
+  }
 
-    /**
-     * Ürün adını SauceDemo'nun data-test slug formatına çevirir.
-     * Örn: "Sauce Labs Backpack" -> "sauce-labs-backpack"
-     */
-    private toTestId(productName: string): string {
-        return productName.trim().toLowerCase().replace(/\s+/g, '-');
-    }
+  // --- ÜRÜN DETAY METODU (product_detail_steps.ts için) ---
+  async goToProductDetail(productName: string): Promise<void> {
+    const productLink = this.page.locator('.inventory_item_name', { hasText: productName });
+    await productLink.click();
+  }
 
-    /**
-     * Verilen ürünün "Add to cart" butonunu bulur.
-     */
-    private addToCartButton(productName: string): Locator {
-        return this.page.locator(`[data-test="add-to-cart-${this.toTestId(productName)}"]`);
-    }
+  // --- SEPET METOTLARI (cart_steps.ts için) ---
+  async addProductToCart(productName: string): Promise<void> {
+    const addButton = this.page.locator(`.inventory_item:has-text("${productName}") button:has-text("Add to cart")`);
+    await addButton.click();
+  }
 
-    /**
-     * Verilen ürünün "Remove" butonunu bulur (sepete eklendikten sonra buton bu hale döner).
-     * NOT: data-test="remove-{slug}" formatı inspector'dan doğrulanmalı.
-     */
-    private removeButton(productName: string): Locator {
-        return this.page.locator(`[data-test="remove-${this.toTestId(productName)}"]`);
+  async addMultipleProductsToCart(productNames: string[]): Promise<void> {
+    for (const name of productNames) {
+      await this.addProductToCart(name);
     }
+  }
 
-    /**
-     * Verilen ürünü sepete ekler.
-     */
-    async addProductToCart(productName: string) {
-        await this.addToCartButton(productName).click();
-    }
+  async removeProductFromCart(productName: string): Promise<void> {
+    const removeButton = this.page.locator(`.inventory_item:has-text("${productName}") button:has-text("Remove")`);
+    await removeButton.click();
+  }
 
-    /**
-     * Verilen ürünü sepetten çıkarır (inventory sayfasındaki "Remove" butonuyla).
-     */
-    async removeProductFromCart(productName: string) {
-        await this.removeButton(productName).click();
-    }
+  async isCartBadgeVisible(): Promise<boolean> {
+    return await this.cartBadge.isVisible();
+  }
 
-    /**
-     * Birden fazla ürünü sırayla sepete ekler.
-     */
-    async addMultipleProductsToCart(productNames: string[]) {
-        for (const name of productNames) {
-            await this.addProductToCart(name);
-        }
-    }
+  async getCartBadgeText(): Promise<string> {
+    return (await this.cartBadge.textContent()) || '';
+  }
 
-    /**
-     * Sepet ikonunun üzerindeki metni (sayıyı) döndürür.
-     * Sepet boşsa badge DOM'da hiç bulunmadığı için null döner.
-     */
-    async getCartBadgeText(): Promise<string | null> {
-        if (await this.cartBadge.count() === 0) {
-            return null;
-        }
-        return await this.cartBadge.textContent();
-    }
+  async goToCart(): Promise<void> {
+    await this.cartIcon.click();
+  }
 
-    /**
-     * Sepet badge'inin şu anda görünür olup olmadığını döndürür.
-     * Boş sepet senaryolarını doğrulamak için kullanılır.
-     */
-    async isCartBadgeVisible(): Promise<boolean> {
-        return await this.cartBadge.isVisible();
+  // --- PROBLEM USER TESTİ İÇİN METOT ---
+  async getAllProductImageSrcs(): Promise<string[]> {
+    const count = await this.productImages.count();
+    const srcs: string[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const src = await this.productImages.nth(i).getAttribute('src');
+      if (src) {
+        srcs.push(src);
+      }
     }
-
-    /**
-     * Sepet ikonuna tıklayarak sepet (Cart) sayfasına gider.
-     */
-    async goToCart() {
-        await this.cartIcon.click();
-    }
-
-    /**
-     * Verilen ürünün adına tıklayarak ürün detay sayfasına gider.
-     */
-    async goToProductDetail(productName: string) {
-        await this.page.locator('.inventory_item_name', { hasText: productName }).click();
-    }
+    return srcs;
+  }
 }
