@@ -5,7 +5,7 @@ import { InventoryPage } from '../pages/inventory_page';
 When('I add the product {string} to the cart', async function (productName: string) {
     // page yerine this.page kullanıyoruz (World nesnesinden geliyor)
     const inventory = new InventoryPage(this.page); 
-    await inventory.addProductToCart();
+    await inventory.addProductToCart(productName);
 });
 
 Then('the cart badge should display {string}', async function (expected: string) {
@@ -17,6 +17,21 @@ Then('the cart badge should display {string}', async function (expected: string)
 When('I click the cart icon', async function () {
     const inventory = new InventoryPage(this.page);
     await inventory.goToCart();
+});
+
+When('I add the products {string} and {string} to the cart', async function (productA: string, productB: string) {
+    const inventory = new InventoryPage(this.page);
+    await inventory.addMultipleProductsToCart([productA, productB]);
+});
+
+When('I remove the product {string} from the cart', async function (productName: string) {
+    const inventory = new InventoryPage(this.page);
+    await inventory.removeProductFromCart(productName);
+});
+
+Then('the cart badge should not be visible', async function () {
+    const inventory = new InventoryPage(this.page);
+    await expect(await inventory.isCartBadgeVisible()).toBe(false);
 });
 
 Then('I should be on the Cart page', async function () {
