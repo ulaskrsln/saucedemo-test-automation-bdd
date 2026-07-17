@@ -1,11 +1,15 @@
-// cucumber.js dosyasının içi buna benzer olmalı:
+// GEÇİCİ TEST: Allure formatter'ı kaldırıp stdout'un çalışıp çalışmadığını doğruluyoruz
 module.exports = {
   default: {
-    requireModule: ['ts-node/register'], // TypeScript desteği
+    requireModule: ['ts-node/register'],
     require: [
-      'steps/**/*.ts',    // Adım dosyalarını bul
-      'support/**/*.ts'   // YENİ: Altyapı (World ve Hooks) dosyalarını bul!
+      'steps/**/*.ts',
+      'support/**/*.ts'
     ],
-    format: ['html:cucumber-report.html'] // Raporlama
+    format: [
+      'summary',
+      'html:cucumber-report.html'
+      // 'allure-cucumberjs/reporter'  <-- GEÇİCİ OLARAK KAPALI
+    ]
   }
 }
