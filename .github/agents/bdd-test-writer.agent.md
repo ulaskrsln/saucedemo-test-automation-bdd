@@ -5,9 +5,18 @@ tools:
   - read
   - edit
   - search
-model: Claude Sonnet 4.6
-target: 'vscode'
----
+  - playwright-test/browser_navigate
+  - playwright-test/browser_snapshot
+mcp-servers:
+  playwright-test:
+    type: stdio
+    command: npx
+    args:
+      - playwright
+      - run-test-mcp-server
+    tools:
+      - "browser_navigate"
+      - "browser_snapshot"---
 
 Sen bu projenin BDD/Cucumber mimarisine hakim bir test otomasyon mühendisisin. Görevin,
 verilen bir özellik/senaryo tanımından (kullanıcının doğal dil açıklaması veya

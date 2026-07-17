@@ -1,0 +1,1702 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  agents/
+    bdd-test-writer.agent.md
+    copilot-instructions.md
+    playwright-test-generator.agent.md
+    playwright-test-healer.agent.md
+    playwright-test-planner.agent.md
+  instructions/
+    features.instructions.md
+    pages.instructions.md
+    steps.instructions.md
+  workflows/
+    copilot-setup-steps.yml
+    playwright.yml
+features/
+  burger_menu.feature
+  cart.feature
+  checkout.feature
+  login.feature
+  problem_user.feature
+  product_detail.feature
+  sorting.feature
+pages/
+  burger_menu_page.ts
+  checkout_page.ts
+  inventory_page.ts
+  login_page.ts
+  product_detail_page.ts
+  sorting_page.ts
+specs/
+  README.md
+steps/
+  burger_menu_steps.ts
+  cart_steps.ts
+  checkout_steps.ts
+  login_steps.ts
+  product_detail_steps.ts
+  prolem_user_steps.ts
+  sorting_steps.ts
+support/
+  hook.ts
+  world.ts
+tests/
+  example.spec.ts
+  seed.spec.ts
+.gitignore
+ai_instructions.md
+cucumber.js
+login_context.md
+package.json
+playwright.config.ts
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".github/agents/bdd-test-writer.agent.md">
+---
+name: bdd-test-writer
+description: 'Use this agent when you need to add a new BDD/Cucumber test scenario to this project — a .feature file plus the matching page object and step definitions, following the existing Page Object Model + World pattern architecture. Do NOT use this for native Playwright spec files (tests/**); use the playwright-test-generator agent for that.'
+tools:
+  - read
+  - edit
+  - search
+model: Claude Sonnet 4.6
+target: 'vscode'
+---
+
+Sen bu projenin BDD/Cucumber mimarisine hakim bir test otomasyon mühendisisin. Görevin,
+verilen bir özellik/senaryo tanımından (kullanıcının doğal dil açıklaması veya
+specs/ altındaki bir test planından) üç parçayı birlikte üretmek:
+
+1. `features/*.feature` — Gherkin senaryosu
+2. `pages/*.ts` — gerekiyorsa yeni page object (varsa mevcut olanı genişlet, yeniden yazma)
+3. `steps/*.ts` — step definitions
+
+# Zorunlu kurallar (repo genelinde .github/copilot-instructions.md ile aynı, burada tekrarı önemlidir)
+
+- Page Object Model zorunlu. Locator'lar page sınıfında `private readonly`.
+- Page sınıflarında iş mantığı assertion'ı YAPILMAZ — assertion step definition'da.
+- Cucumber `World` (`this.page`, `this.browser`) kullanılır, `export/import` ile state
+  paylaşımı YAPILMAZ.
+- Gherkin İngilizce, veri odaklı senaryolarda `Scenario Outline` + `Examples`.
+- Locator olarak `data-test` attribute önceliklidir — CSS class isminden ASLA tahmin etme.
+  Emin değilsen, bilinen SauceDemo data-test değerlerini kullanıcıdan doğrulamasını iste
+  ya da support/login_context.md benzeri referans dosyalara bak.
+
+# İş akışı
+
+1. Önce `features/`, `pages/`, `steps/` altındaki mevcut dosyaları oku — isimlendirme,
+   yorum stili ve yapıyı bu projeden öğren, dışarıdan bir şablon getirme.
+2. Yeni senaryo mevcut bir page'i mi kullanıyor, yoksa yeni page object mı gerekiyor karar ver.
+   Mevcut page'i genişletiyorsan var olan metotları KORU, sadece eksik olanı ekle.
+3. Sırasıyla üret: page object (gerekiyorsa) → feature dosyası → step definitions.
+4. Ambiguous step riskine karşı, yeni step eklemeden önce steps/ klasöründe aynı/benzer
+   step metni olup olmadığını kontrol et.
+5. Üç dosyanın da bu projenin genel dosyasındaki (`ai_instructions.md` / `login_context.md`
+   içeriği artık `.github/copilot-instructions.md` içinde) kurallara uyduğunu son bir
+   kez gözden geçir.
+
+Çıktıyı üretirken kod yazma dışında hiçbir şey yapma — tarayıcıyı açıp canlı doğrulama
+bu agent'ın işi değil (bunun için playwright-test-planner/generator kullanılır). Emin
+olmadığın bir `data-test` değeri varsa, tahmin etmek yerine kullanıcıya sor.
+Feature dosyasını yazdıktan sonra, içindeki her step metnini steps/ klasöründe ara; karşılığı yoksa mutlaka ekle.
+</file>
+
+<file path=".github/agents/copilot-instructions.md">
+# SauceDemo E2E Test Framework — Repo Context
+
+## Stack
+- Playwright + Cucumber.js (TypeScript), BDD yaklaşımı
+- Hedef uygulama: https://www.saucedemo.com/
+- Test izolasyonu: Cucumber `World` pattern (bkz. support/world.ts, support/hook.ts)
+
+## Klasör yapısı
+- `features/` — Gherkin (.feature) senaryoları
+- `pages/` — Page Object Model sınıfları
+- `steps/` — step definitions (feature ↔ page object bağlantısı)
+- `support/` — World tanımı, hooks (Before/After), global config
+- `specs/` — Playwright Agents (planner/generator/healer) için test planları
+- `tests/` — native Playwright Test dosyaları (BDD dışı, Playwright Agents çıktısı)
+- `.github/agents/` — özel Copilot agent tanımları
+
+## Mimari Kurallar (KESİN — sapma yok)
+
+1. **Design Pattern:** Page Object Model (POM) zorunlu.
+2. **State Management:** Senaryolar arası veri/tarayıcı paylaşımı için `export/import`
+   KULLANILMAZ. İzolasyon için Cucumber `World` nesnesi (`this.page`, `this.browser`) kullanılır.
+3. **Locators:** Öncelik sırası: `data-test` attribute > text > CSS selector.
+   Locator'lar page sınıflarında `private readonly` olarak tanımlanır.
+   **ASLA CSS class isminden data-test tahmin etme** — SauceDemo'da kebab-case/underscore
+   tutarsız kullanılıyor, her zaman gerçek attribute'u doğrula.
+4. **Assertions:** Page sınıfları içinde KESİNLİKLE `expect` kullanılmaz.
+   Doğrulamalar sadece step definition dosyalarında yapılır.
+5. **Language:** Gherkin senaryoları İngilizce yazılır. Kod içi yorumlar Türkçe/İngilizce
+   karışık olabilir (mevcut dosyalarda Türkçe yorum ağırlıklı).
+6. **Dependency Injection:** Page nesneleri constructor'da `Page` parametresi alır,
+   step definition içinde `new PageClass(this.page)` ile örneklenir.
+
+## Test Data (SauceDemo standart kullanıcıları)
+- Geçerli şifre: `secret_sauce`
+- Kullanıcılar: `standard_user`, `locked_out_user`, `problem_user`, `performance_glitch_user`
+- Kilitli kullanıcı hatası: `Epic sadface: Sorry, this user has been locked out.`
+- Geçersiz kimlik hatası: `Epic sadface: Username and password do not match any user in this service`
+
+## Notlar
+- `pages/login_page.ts` ve `steps/login_steps.ts` bu projedeki referans örnektir —
+  yeni page/step yazarken stilini birebir takip et.
+- Path'e özel detaylı kurallar için `.github/instructions/*.instructions.md` dosyalarına bak.
+</file>
+
+<file path=".github/agents/playwright-test-generator.agent.md">
+---
+name: playwright-test-generator
+description: 'Use this agent when you need to create automated browser tests using Playwright Examples: <example>Context: User wants to generate a test for the test plan item. <test-suite><!-- Verbatim name of the test spec group w/o ordinal like "Multiplication tests" --></test-suite> <test-name><!-- Name of the test case without the ordinal like "should add two numbers" --></test-name> <test-file><!-- Name of the file to save the test into, like tests/multiplication/should-add-two-numbers.spec.ts --></test-file> <seed-file><!-- Seed file path from test plan --></seed-file> <body><!-- Test case content including steps and expectations --></body></example>'
+tools:
+  - search
+  - playwright-test/browser_click
+  - playwright-test/browser_drag
+  - playwright-test/browser_evaluate
+  - playwright-test/browser_file_upload
+  - playwright-test/browser_handle_dialog
+  - playwright-test/browser_hover
+  - playwright-test/browser_navigate
+  - playwright-test/browser_press_key
+  - playwright-test/browser_select_option
+  - playwright-test/browser_snapshot
+  - playwright-test/browser_type
+  - playwright-test/browser_verify_element_visible
+  - playwright-test/browser_verify_list_visible
+  - playwright-test/browser_verify_text_visible
+  - playwright-test/browser_verify_value
+  - playwright-test/browser_wait_for
+  - playwright-test/generator_read_log
+  - playwright-test/generator_setup_page
+  - playwright-test/generator_write_test
+model: Claude Sonnet 4.6
+mcp-servers:
+  playwright-test:
+    type: stdio
+    command: npx
+    args:
+      - playwright
+      - run-test-mcp-server
+    tools:
+      - "*"
+---
+
+You are a Playwright Test Generator, an expert in browser automation and end-to-end testing.
+Your specialty is creating robust, reliable Playwright tests that accurately simulate user interactions and validate
+application behavior.
+
+# For each test you generate
+- Obtain the test plan with all the steps and verification specification
+- Run the `generator_setup_page` tool to set up page for the scenario
+- For each step and verification in the scenario, do the following:
+  - Use Playwright tool to manually execute it in real-time.
+  - Use the step description as the intent for each Playwright tool call.
+- Retrieve generator log via `generator_read_log`
+- Immediately after reading the test log, invoke `generator_write_test` with the generated source code
+  - File should contain single test
+  - File name must be fs-friendly scenario name
+  - Test must be placed in a describe matching the top-level test plan item
+  - Test title must match the scenario name
+  - Includes a comment with the step text before each step execution. Do not duplicate comments if step requires
+    multiple actions.
+  - Always use best practices from the log when generating tests.
+
+   <example-generation>
+   For following plan:
+
+   ```markdown file=specs/plan.md
+   ### 1. Adding New Todos
+   **Seed:** `tests/seed.spec.ts`
+
+   #### 1.1 Add Valid Todo
+   **Steps:**
+   1. Click in the "What needs to be done?" input field
+
+   #### 1.2 Add Multiple Todos
+   ...
+   ```
+
+   Following file is generated:
+
+   ```ts file=add-valid-todo.spec.ts
+   // spec: specs/plan.md
+   // seed: tests/seed.spec.ts
+
+   test.describe('Adding New Todos', () => {
+     test('Add Valid Todo', async { page } => {
+       // 1. Click in the "What needs to be done?" input field
+       await page.click(...);
+
+       ...
+     });
+   });
+   ```
+   </example-generation>
+</file>
+
+<file path=".github/agents/playwright-test-healer.agent.md">
+---
+name: playwright-test-healer
+description: Use this agent when you need to debug and fix failing Playwright tests
+tools:
+  - search
+  - edit
+  - playwright-test/browser_console_messages
+  - playwright-test/browser_evaluate
+  - playwright-test/browser_generate_locator
+  - playwright-test/browser_network_request
+  - playwright-test/browser_network_requests
+  - playwright-test/browser_snapshot
+  - playwright-test/test_debug
+  - playwright-test/test_list
+  - playwright-test/test_run
+model: Claude Sonnet 4.6
+mcp-servers:
+  playwright-test:
+    type: stdio
+    command: npx
+    args:
+      - playwright
+      - run-test-mcp-server
+    tools:
+      - "*"
+---
+
+You are the Playwright Test Healer, an expert test automation engineer specializing in debugging and
+resolving Playwright test failures. Your mission is to systematically identify, diagnose, and fix
+broken Playwright tests using a methodical approach.
+
+Your workflow:
+1. **Initial Execution**: Run all tests using `test_run` tool to identify failing tests
+2. **Debug failed tests**: For each failing test run `test_debug`.
+3. **Error Investigation**: When the test pauses on errors, use available Playwright MCP tools to:
+   - Examine the error details
+   - Capture page snapshot to understand the context
+   - Analyze selectors, timing issues, or assertion failures
+4. **Root Cause Analysis**: Determine the underlying cause of the failure by examining:
+   - Element selectors that may have changed
+   - Timing and synchronization issues
+   - Data dependencies or test environment problems
+   - Application changes that broke test assumptions
+5. **Code Remediation**: Edit the test code to address identified issues, focusing on:
+   - Updating selectors to match current application state
+   - Fixing assertions and expected values
+   - Improving test reliability and maintainability
+   - For inherently dynamic data, utilize regular expressions to produce resilient locators
+6. **Verification**: Restart the test after each fix to validate the changes
+7. **Iteration**: Repeat the investigation and fixing process until the test passes cleanly
+
+Key principles:
+- Be systematic and thorough in your debugging approach
+- Document your findings and reasoning for each fix
+- Prefer robust, maintainable solutions over quick hacks
+- Use Playwright best practices for reliable test automation
+- If multiple errors exist, fix them one at a time and retest
+- Provide clear explanations of what was broken and how you fixed it
+- You will continue this process until the test runs successfully without any failures or errors.
+- If the error persists and you have high level of confidence that the test is correct, mark this test as test.fixme()
+  so that it is skipped during the execution. Add a comment before the failing step explaining what is happening instead
+  of the expected behavior.
+- Do not ask user questions, you are not interactive tool, do the most reasonable thing possible to pass the test.
+- Never wait for networkidle or use other discouraged or deprecated apis
+</file>
+
+<file path=".github/agents/playwright-test-planner.agent.md">
+---
+name: playwright-test-planner
+description: Use this agent when you need to create comprehensive test plan for a web application or website
+tools:
+  - search
+  - playwright-test/browser_click
+  - playwright-test/browser_close
+  - playwright-test/browser_console_messages
+  - playwright-test/browser_drag
+  - playwright-test/browser_evaluate
+  - playwright-test/browser_file_upload
+  - playwright-test/browser_handle_dialog
+  - playwright-test/browser_hover
+  - playwright-test/browser_navigate
+  - playwright-test/browser_navigate_back
+  - playwright-test/browser_network_request
+  - playwright-test/browser_network_requests
+  - playwright-test/browser_press_key
+  - playwright-test/browser_run_code_unsafe
+  - playwright-test/browser_select_option
+  - playwright-test/browser_snapshot
+  - playwright-test/browser_take_screenshot
+  - playwright-test/browser_type
+  - playwright-test/browser_wait_for
+  - playwright-test/planner_setup_page
+  - playwright-test/planner_save_plan
+model: Claude Sonnet 4.6
+mcp-servers:
+  playwright-test:
+    type: stdio
+    command: npx
+    args:
+      - playwright
+      - run-test-mcp-server
+    tools:
+      - "*"
+---
+
+You are an expert web test planner with extensive experience in quality assurance, user experience testing, and test
+scenario design. Your expertise includes functional testing, edge case identification, and comprehensive test coverage
+planning.
+
+You will:
+
+1. **Navigate and Explore**
+   - Invoke the `planner_setup_page` tool once to set up page before using any other tools
+   - Explore the browser snapshot
+   - Do not take screenshots unless absolutely necessary
+   - Use `browser_*` tools to navigate and discover interface
+   - Thoroughly explore the interface, identifying all interactive elements, forms, navigation paths, and functionality
+
+2. **Analyze User Flows**
+   - Map out the primary user journeys and identify critical paths through the application
+   - Consider different user types and their typical behaviors
+
+3. **Design Comprehensive Scenarios**
+
+   Create detailed test scenarios that cover:
+   - Happy path scenarios (normal user behavior)
+   - Edge cases and boundary conditions
+   - Error handling and validation
+
+4. **Structure Test Plans**
+
+   Each scenario must include:
+   - Clear, descriptive title
+   - Detailed step-by-step instructions
+   - Expected outcomes where appropriate
+   - Assumptions about starting state (always assume blank/fresh state)
+   - Success criteria and failure conditions
+
+5. **Create Documentation**
+
+   Submit your test plan using `planner_save_plan` tool.
+
+**Quality Standards**:
+- Write steps that are specific enough for any tester to follow
+- Include negative testing scenarios
+- Ensure scenarios are independent and can be run in any order
+
+**Output Format**: Always save the complete test plan as a markdown file with clear headings, numbered steps, and
+professional formatting suitable for sharing with development and QA teams.
+</file>
+
+<file path=".github/instructions/features.instructions.md">
+---
+applyTo: "features/**"
+---
+
+- Gherkin İngilizce yazılır.
+- Veri odaklı senaryolar için `Scenario Outline` + `Examples` tablosu kullanılır
+  (bkz. login.feature) — tekil `Scenario` yerine tercih edilir çünkü aynı akışın
+  birden fazla veri kombinasyonuyla test edilmesini tek yerde okunabilir tutar.
+- Senaryo/feature başlıkları iş kuralı gibi yazılır ("User login with valid and
+  invalid credentials"), teknik detay (selector, class adı) içermez.
+- Given/When/Then sırası korunur; aynı tipte birden fazla adım gerekiyorsa `And` kullanılır.
+- Yeni bir .feature dosyası eklerken mevcut step tanımlarını (steps/ altında) kontrol et,
+  varsa yeniden kullan; yoksa yeni step ekle.
+</file>
+
+<file path=".github/instructions/pages.instructions.md">
+---
+applyTo: "pages/**"
+---
+
+- Dosya adı: `snake_case.ts` (mevcut: `login_page.ts`, `inventory_page.ts`, `checkout_page.ts`, `sorting_page.ts`), sınıf adı `PascalCase` (`LoginPage`).
+- Constructor imzası: `constructor(page: Page)`, ardından tüm locator'lar `private readonly` olarak tanımlanır ve constructor içinde initialize edilir.
+- `readonly page: Page;` public alan olarak tutulur (World'den page erişimi gerekebilir).
+- Metotlar davranışı ifade eder, selector'ı değil: `enterUsername(username)`, `clickLogin()`, `verifySuccessfulLogin()` — `click(selector)` gibi genel isimler KULLANILMAZ.
+- Her public metot üstünde kısa bir Türkçe JSDoc yorumu olur (bkz. login_page.ts).
+- KESİNLİKLE `expect` import etme/kullanma gereken assertion'lar hariç — mevcut kodda
+  `verifySuccessfulLogin` gibi "durum doğrulayan" metotlar page içinde `expect` kullanabilir
+  (bu bir istisna: sayfanın kendi başarı durumunu doğrulaması). Ama iş mantığı assertion'ları
+  (beklenen değerle karşılaştırma gibi) her zaman step definition'da kalır.
+- Yeni bir sayfa eklerken önce SauceDemo'da gerçek `data-test` attribute'lerini inspector'dan
+  doğrula, class isminden tahmin etme.
+</file>
+
+<file path=".github/instructions/steps.instructions.md">
+---
+applyTo: "steps/**"
+---
+
+- Dosya adı: `{feature}_steps.ts` (mevcut: `login_steps.ts`, `cart_steps.ts`, `checkout_steps.ts`, `sorting_steps.ts`).
+- Her step fonksiyonu içinde ilgili page object `new PageClass(this.page)` ile örneklenir —
+  page object'i step'ler arası paylaşma, her step kendi instance'ını oluşturur.
+- `Given/When/Then` importu `@cucumber/cucumber`'dan yapılır.
+- Step metinlerinde parametreler `{string}` placeholder ile alınır, fonksiyon imzasında
+  tip belirtilir (`username: string`).
+- Assertion/karşılaştırma mantığı burada yaşar (page object'in döndürdüğü değeri kontrol et,
+  gerekirse anlamlı hata mesajı fırlat — bkz. login_steps.ts'teki `Then` bloğu).
+- Yeni step yazmadan önce features/ altındaki ilgili .feature dosyasını oku, aynı step
+  metnini tekrar tanımlama — Cucumber "ambiguous step" hatası verir.
+</file>
+
+<file path=".github/workflows/copilot-setup-steps.yml">
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    # Customize this step as needed
+    - name: Build application
+      run: npx run build
+</file>
+
+<file path="features/burger_menu.feature">
+Feature: Burger Menu - Logout and Reset App State
+
+  Background:
+    Given I am on the SauceDemo login page
+    When I enter username "standard_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+
+  Scenario: User can log out from the burger menu
+    When I log out from the menu
+    Then I should be on the login page
+
+  Scenario: Logged out user cannot return to inventory page via browser back button
+    When I log out from the menu
+    Then I should be on the login page
+    When I click the browser back button
+    Then I should be on the login page
+
+  Scenario: Reset App State clears the cart
+    When I add the product "Sauce Labs Backpack" to the cart
+    And the cart badge should display "1"
+    When I reset the app state from the menu
+    Then the cart badge should not be visible
+</file>
+
+<file path="features/login.feature">
+Feature: SauceDemo Login Functionality
+
+  Scenario Outline: User login with valid and invalid credentials
+    Given I am on the SauceDemo login page
+    When I enter username "<username>" and password "<password>"
+    And I click the login button
+    Then I should see "<expected_result>"
+
+    Examples:
+      | username                | password             | expected_result                                                             |
+      | standard_user           | secret_sauce         | successful login                                                            |
+      | locked_out_user         | secret_sauce         | Epic sadface: Sorry, this user has been locked out.                         |
+      | problem_user            | secret_sauce         | successful login                                                            |
+      | performance_glitch_user | secret_sauce         | successful login                                                            |
+      | standard_user           | invalid_password_123 | Epic sadface: Username and password do not match any user in this service   |
+      | locked_out_user         | invalid_password_123 | Epic sadface: Username and password do not match any user in this service   |
+      | problem_user            | invalid_password_123 | Epic sadface: Username and password do not match any user in this service   |
+      | performance_glitch_user | invalid_password_123 | Epic sadface: Username and password do not match any user in this service   |
+      | standard_user           |                      | Epic sadface: Password is required                                          |
+</file>
+
+<file path="features/problem_user.feature">
+Feature: problem_user - Known SauceDemo bug (identical product images)
+
+  # Bu feature diğerlerinden farklı olarak Background kullanmıyor,
+  # çünkü senaryonun ön koşulu (problem_user ile giriş) diğer senaryolardan
+  # farklı bir kullanıcıya ihtiyaç duyuyor.
+
+  Scenario: problem_user sees identical images for all products
+    Given I am on the SauceDemo login page
+    When I enter username "problem_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+    And all product images should be identical
+</file>
+
+<file path="features/product_detail.feature">
+Feature: Product Detail - View and add to cart from detail page
+
+  Background:
+    Given I am on the SauceDemo login page
+    When I enter username "standard_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+
+  Scenario: View product detail and add to cart from the detail page
+    When I click on the product "Sauce Labs Backpack"
+    Then I should see the product detail for "Sauce Labs Backpack"
+    When I add the product to the cart from the detail page
+    And I click the back to products button
+    Then the cart badge should display "1"
+</file>
+
+<file path="features/sorting.feature">
+Feature: Inventory - Sort products
+
+  Background:
+    Given I am on the SauceDemo login page
+    When I enter username "standard_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+
+  Scenario Outline: standard_user sorts the product list by "<sort_option>"
+    When I select the sort option "<sort_option>"
+    Then the product list should be sorted by "<sort_option>"
+
+    Examples:
+      | sort_option        |
+      | Name (A to Z)      |
+      | Name (Z to A)      |
+      | Price (low to high) |
+      | Price (high to low) |
+</file>
+
+<file path="pages/burger_menu_page.ts">
+import { Page, Locator } from '@playwright/test';
+
+export class BurgerMenuPage {
+    readonly page: Page;
+    private readonly openMenuButton: Locator;
+    private readonly closeMenuButton: Locator;
+    private readonly logoutLink: Locator;
+    private readonly resetStateLink: Locator;
+
+    constructor(page: Page) {
+        this.page = page;
+        // NOT: data-test="open-menu" / "close-menu" değerleri gerçek <button>'ın
+        // İÇİNDEKİ <img> elementinde duruyor, buton'un kendisinde değil. img'e
+        // tıklamaya çalışınca üstündeki gerçek buton tıklamayı "intercept" ediyor
+        // ve Playwright sonsuz retry'a giriyor. Bu yüzden burada istisnai olarak
+        // data-test yerine SauceDemo'nun stabil buton id'lerini kullanıyoruz.
+        this.openMenuButton = page.locator('#react-burger-menu-btn');
+        this.closeMenuButton = page.locator('#react-burger-cross-btn');
+        this.logoutLink = page.locator('[data-test="logout-sidebar-link"]');
+        this.resetStateLink = page.locator('[data-test="reset-sidebar-link"]');
+    }
+
+    /**
+     * Burger menüyü açar.
+     */
+    async openMenu() {
+        await this.openMenuButton.click();
+    }
+
+    /**
+     * Burger menüyü kapatır.
+     */
+    async closeMenu() {
+        await this.closeMenuButton.click();
+    }
+
+    /**
+     * Menüyü açıp "Logout" linkine tıklayarak oturumu kapatır.
+     */
+    async logout() {
+        await this.openMenu();
+        await this.logoutLink.click();
+    }
+
+    /**
+     * Menüyü açıp "Reset App State" linkine tıklayarak sepeti/uygulama durumunu sıfırlar.
+     */
+    async resetAppState() {
+        await this.openMenu();
+        await this.resetStateLink.click();
+        await this.closeMenu();
+    }
+}
+</file>
+
+<file path="pages/login_page.ts">
+import { Page, Locator, expect } from '@playwright/test';
+
+export class LoginPage {
+    // Sürdürülebilirlik ve Güvenlik: Element locatörlerini private ve readonly yaparak korumaya alıyoruz.
+    readonly page: Page;
+    private readonly usernameInput: Locator;
+    private readonly passwordInput: Locator;
+    private readonly loginButton: Locator;
+    private readonly errorMessageContainer: Locator;
+    private readonly inventoryContainer: Locator;
+
+    // Bağımlılık Enjeksiyonu (Dependency Injection): Tarayıcı sayfa nesnesi dışarıdan bu sınıfa aktarılır.
+    constructor(page: Page) {
+        this.page = page;
+        this.usernameInput = page.locator('[data-test="username"]');
+        this.passwordInput = page.locator('[data-test="password"]');
+        this.loginButton = page.locator('[data-test="login-button"]');
+        this.errorMessageContainer = page.locator('[data-test="error"]');
+        this.inventoryContainer = page.locator('[data-test="inventory-container"]');
+    }
+
+    /**
+     * Kullanıcıyı SauceDemo ana sayfasına götürür.
+     */
+    async navigate() {
+        await this.page.goto('https://www.saucedemo.com/');
+    }
+
+    /**
+     * Kullanıcı adı alanını doldurur.
+     */
+    async enterUsername(username: string) {
+        if (username.trim() !== '') {
+            await this.usernameInput.fill(username);
+        }
+    }
+
+    /**
+     * Şifre alanını doldurur.
+     */
+    async enterPassword(password: string) {
+        if (password.trim() !== '') {
+            await this.passwordInput.fill(password);
+        }
+    }
+
+    /**
+     * Login butonuna tıklar.
+     */
+    async clickLogin() {
+        await this.loginButton.click();
+    }
+
+    /**
+     * UI'da beliren hata mesajının metnini döndürür.
+     */
+    async getErrorMessage(): Promise<string> {
+        await expect(this.errorMessageContainer).toBeVisible();
+        return await this.errorMessageContainer.innerText();
+    }
+
+    /**
+     * Başarılı giriş sonrasında envanter sayfasının yüklendiğini doğrular.
+     */
+    async verifySuccessfulLogin() {
+        await expect(this.inventoryContainer).toBeVisible();
+        await expect(this.page).toHaveURL(/.*inventory.html/);
+    }
+}
+</file>
+
+<file path="pages/product_detail_page.ts">
+import { Page, Locator } from '@playwright/test';
+
+export class ProductDetailPage {
+    readonly page: Page;
+    private readonly itemName: Locator;
+    private readonly itemPrice: Locator;
+    private readonly itemDesc: Locator;
+    private readonly backButton: Locator;
+    private readonly addToCartButton: Locator;
+
+    constructor(page: Page) {
+        this.page = page;
+        this.itemName = page.locator('[data-test="inventory-item-name"]');
+        this.itemPrice = page.locator('[data-test="inventory-item-price"]');
+        this.itemDesc = page.locator('[data-test="inventory-item-desc"]');
+        this.backButton = page.locator('[data-test="back-to-products"]');
+        // NOT: liste sayfasının aksine burada slug YOK — tek ürün olduğu için
+        // SauceDemo generic "add-to-cart" / "remove" data-test kullanıyor (doğrulandı).
+        this.addToCartButton = page.locator('[data-test="add-to-cart"]');
+    }
+
+    /**
+     * Detay sayfasındaki ürün adını döndürür.
+     */
+    async getProductName(): Promise<string> {
+        return (await this.itemName.textContent()) || '';
+    }
+
+    /**
+     * Detay sayfasındaki ürün fiyatını döndürür.
+     */
+    async getProductPrice(): Promise<string> {
+        return (await this.itemPrice.textContent()) || '';
+    }
+
+    /**
+     * Detay sayfasındaki ürün açıklamasını döndürür.
+     */
+    async getProductDescription(): Promise<string> {
+        return (await this.itemDesc.textContent()) || '';
+    }
+
+    /**
+     * Detay sayfasından ürünü sepete ekler (buton generic, ürün adı parametresi gerekmiyor).
+     */
+    async addToCart() {
+        await this.addToCartButton.click();
+    }
+
+    /**
+     * "Back to products" butonuna tıklayarak inventory sayfasına döner.
+     */
+    async goBackToProducts() {
+        await this.backButton.click();
+    }
+}
+</file>
+
+<file path="pages/sorting_page.ts">
+import { Page, Locator } from '@playwright/test';
+
+// Sorting sayfası için Page Object Model sınıfı
+// Not: Bu sınıf içinde KESİNLİKLE 'expect' kullanılmaz. Doğrulamalar Step Definition dosyalarında yapılır.
+export class SortingPage {
+  private readonly page: Page;
+
+  // Locator tanımlamaları - data-test attribute ve class selector öncelikli
+  private readonly sortDropdown: Locator;
+  private readonly productNames: Locator;
+  private readonly productPrices: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.sortDropdown = this.page.locator('[data-test="product-sort-container"]');
+    this.productNames = this.page.locator('.inventory_item_name');
+    this.productPrices = this.page.locator('.inventory_item_price');
+  }
+
+  /**
+   * Dropdown menüsünden verilen etikete (label) göre sıralama seçeneğini seçer.
+   * Örn: "Name (A to Z)", "Price (low to high)"
+   */
+  async selectSortOption(sortOption: string): Promise<void> {
+    await this.sortDropdown.selectOption({ label: sortOption });
+  }
+
+  /**
+   * Ekrandaki tüm ürün isimlerini sırasıyla string dizisi olarak döndürür.
+   */
+  async getProductNames(): Promise<string[]> {
+    return await this.productNames.allTextContents();
+  }
+
+  /**
+   * Ekrandaki tüm ürün fiyatlarını '$' işaretinden arındırarak number dizisi olarak döndürür.
+   */
+  async getProductPrices(): Promise<number[]> {
+    const rawPrices = await this.productPrices.allTextContents();
+    return rawPrices.map((price) => parseFloat(price.replace('$', '').trim()));
+  }
+}
+</file>
+
+<file path="specs/README.md">
+# Specs
+
+This is a directory for test plans.
+</file>
+
+<file path="steps/burger_menu_steps.ts">
+import { When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { BurgerMenuPage } from '../pages/burger_menu_page';
+
+When('I log out from the menu', async function () {
+    const menu = new BurgerMenuPage(this.page);
+    await menu.logout();
+});
+
+Then('I should be on the login page', async function () {
+    await expect(this.page).toHaveURL('https://www.saucedemo.com/');
+});
+
+When('I reset the app state from the menu', async function () {
+    const menu = new BurgerMenuPage(this.page);
+    await menu.resetAppState();
+});
+
+When('I click the browser back button', async function () {
+    await this.page.goBack();
+});
+</file>
+
+<file path="steps/product_detail_steps.ts">
+import { When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { InventoryPage } from '../pages/inventory_page';
+import { ProductDetailPage } from '../pages/product_detail_page';
+
+When('I click on the product {string}', async function (productName: string) {
+    const inventory = new InventoryPage(this.page);
+    await inventory.goToProductDetail(productName);
+});
+
+Then('I should see the product detail for {string}', async function (productName: string) {
+    const detailPage = new ProductDetailPage(this.page);
+    const actualName = await detailPage.getProductName();
+    expect(actualName).toBe(productName);
+});
+
+When('I add the product to the cart from the detail page', async function () {
+    const detailPage = new ProductDetailPage(this.page);
+    await detailPage.addToCart();
+});
+
+When('I click the back to products button', async function () {
+    const detailPage = new ProductDetailPage(this.page);
+    await detailPage.goBackToProducts();
+});
+</file>
+
+<file path="steps/prolem_user_steps.ts">
+import { Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { InventoryPage } from '../pages/inventory_page';
+
+Then('all product images should be identical', async function () {
+    const inventory = new InventoryPage(this.page);
+    const imageSources = await inventory.getAllProductImageSrcs();
+
+    // Set kullanarak dizideki tekil (unique) değer sayısını buluyoruz.
+    // Eğer hepsi aynıysa, Set'in boyutu 1 olmalı.
+    const uniqueSources = new Set(imageSources);
+    expect(uniqueSources.size).toBe(1);
+});
+</file>
+
+<file path="steps/sorting_steps.ts">
+import { When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { SortingPage } from '../pages/sorting_page';
+
+When('I select the sort option {string}', async function (sortOption: string) {
+  const sortingPage = new SortingPage(this.page);
+  await sortingPage.selectSortOption(sortOption);
+});
+
+Then('the product list should be sorted by {string}', async function (sortOption: string) {
+  const sortingPage = new SortingPage(this.page);
+
+  if (sortOption.includes('Name')) {
+    const actualNames = await sortingPage.getProductNames();
+    const expectedNames = [...actualNames].sort((a, b) => {
+      return sortOption.includes('Z to A') ? b.localeCompare(a) : a.localeCompare(b);
+    });
+
+    expect(actualNames).toEqual(expectedNames);
+  } else if (sortOption.includes('Price')) {
+    const actualPrices = await sortingPage.getProductPrices();
+    const expectedPrices = [...actualPrices].sort((a, b) => {
+      return sortOption.includes('high to low') ? b - a : a - b;
+    });
+
+    expect(actualPrices).toEqual(expectedPrices);
+  }
+});
+</file>
+
+<file path="support/world.ts">
+import { setWorldConstructor, World, IWorldOptions } from '@cucumber/cucumber';
+import { Browser, Page } from '@playwright/test';
+
+class CustomWorld extends World {
+    browser!: Browser;
+    page!: Page;
+
+    constructor(options: IWorldOptions) {
+        super(options);
+    }
+}
+
+setWorldConstructor(CustomWorld);
+</file>
+
+<file path="tests/example.spec.ts">
+import { test, expect } from '@playwright/test';
+
+test('has title', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
+
+  // Expect a title "to contain" a substring.
+  await expect(page).toHaveTitle(/Playwright/);
+});
+
+test('get started link', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
+
+  // Click the get started link.
+  await page.getByRole('link', { name: 'Get started' }).click();
+
+  // Expects page to have a heading with the name of Installation.
+  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+});
+</file>
+
+<file path="tests/seed.spec.ts">
+import { test, expect } from '@playwright/test';
+
+test.describe('Test group', () => {
+  test('seed', async ({ page }) => {
+    // generate code here.
+  });
+});
+</file>
+
+<file path=".gitignore">
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+cucumber-report.html
+.env
+</file>
+
+<file path="ai_instructions.md">
+# Test Automation Architecture Rules
+
+1. **Design Pattern:** Projede kesinlikle Page Object Model (POM) kullanılacaktır.
+2. **State Management:** Senaryolar arası veri veya tarayıcı (browser/page) paylaşımı için `export/import` KULLANILMAYACAKTIR. Test izolasyonunu sağlamak için Cucumber `World` nesnesi (this.page, this.browser) kullanılacaktır.
+3. **Locators:** Element seçimlerinde öncelikle `data-test` attributeleri, yoksa text veya CSS selector kullanılacaktır. Locator'lar sayfa sınıflarında `private readonly` olarak tanımlanmalıdır.
+4. **Assertions:** Sayfa sınıfları (Pages) içinde KESİNLİKLE `expect` kullanılmayacaktır. Doğrulamalar sadece Step Definition dosyalarında yapılacaktır.
+5. **Language:** Gherkin senaryoları İngilizce, kod içi yorum satırları Türkçe veya İngilizce olabilir.
+</file>
+
+<file path="login_context.md">
+# Context: SauceDemo Login Page Architecture & Testing Constraints
+
+## 1. Page Specifications
+- **Target URL:** `https://www.saucedemo.com/`
+- **Module:** Authentication
+- **Design Pattern:** Page Object Model (POM)
+- **Architectural Goal:** Strict separation of locators, test data, and action methods.
+
+## 2. DOM Elements & Locators (Playwright CSS Selectors)
+- **Username Input:** `[data-test="username"]`
+- **Password Input:** `[data-test="password"]`
+- **Login Button:** `[data-test="login-button"]`
+- **Error Message Container:** `[data-test="error"]`
+- **Inventory Page Validation Element:** `[data-test="inventory-container"]` (Used to verify successful redirection)
+
+## 3. Test Data Management (Data-Driven Parameters)
+- **Global Valid Password:** `secret_sauce`
+- **Invalid Password:** `invalid_password_123`
+- **Valid User:** `standard_user`
+- **Locked User:** `locked_out_user`
+- **Problematic User:** `problem_user`
+- **Performance User:** `performance_glitch_user`
+
+## 4. Expected Behaviors & State Transitions
+- **Successful Login State:** User is redirected to `/inventory.html` and the inventory container becomes visible.
+- **Locked Out Error State:** The error container displays the exact text: `Epic sadface: Sorry, this user has been locked out.`
+- **Invalid Credentials Error State:** The error container displays the exact text: `Epic sadface: Username and password do not match any user in this service`
+
+## 5. AI Agent Generation Directives
+- Generate Gherkin syntax exclusively in English.
+- Utilize `Scenario Outline` and `Examples` tables for all data-driven flows.
+- Keep steps atomic, reusable, and framework-agnostic.
+</file>
+
+<file path="playwright.config.ts">
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// import dotenv from 'dotenv';
+// import path from 'path';
+// dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  testDir: './tests',
+  /* Run tests in files in parallel */
+  fullyParallel: true,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: !!process.env.CI,
+  /* Retry on CI only */
+  retries: process.env.CI ? 2 : 0,
+  /* Opt out of parallel tests on CI. */
+  workers: process.env.CI ? 1 : undefined,
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: 'html',
+  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  use: {
+    /* Base URL to use in actions like `await page.goto('')`. */
+    // baseURL: 'http://localhost:3000',
+
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: 'on-first-retry',
+  },
+
+  /* Configure projects for major browsers */
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+
+    /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
+
+    /* Test against branded browsers. */
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    // },
+    // {
+    //   name: 'Google Chrome',
+    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    // },
+  ],
+
+  /* Run your local dev server before starting the tests */
+  // webServer: {
+  //   command: 'npm run start',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: !process.env.CI,
+  // },
+});
+</file>
+
+<file path="features/cart.feature">
+Feature: Inventory - Add product to cart and navigate to Cart page
+
+  Background:
+    Given I am on the SauceDemo login page
+    When I enter username "standard_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+
+  Scenario: standard_user adds "Sauce Labs Backpack" to the cart and navigates to Cart
+    When I add the product "Sauce Labs Backpack" to the cart
+    Then the cart badge should display "1"
+    When I click the cart icon
+    Then I should be on the Cart page
+    And the cart should contain "Sauce Labs Backpack"
+
+  Scenario: add multiple products, remove one, and verify badge updates and hides when empty
+    When I add the products "Sauce Labs Backpack" and "Sauce Labs Bike Light" to the cart
+    Then the cart badge should display "2"
+    When I remove the product "Sauce Labs Bike Light" from the cart
+    Then the cart badge should display "1"
+    When I remove the product "Sauce Labs Backpack" from the cart
+    Then the cart badge should not be visible
+</file>
+
+<file path="features/checkout.feature">
+Feature: Checkout - Complete purchase
+
+  Background:
+    Given I am on the SauceDemo login page
+    When I enter username "standard_user" and password "secret_sauce"
+    And I click the login button
+    Then I should see "successful login"
+
+  Scenario: standard_user completes checkout for "Sauce Labs Backpack"
+    When I add the product "Sauce Labs Backpack" to the cart
+    And the cart badge should display "1"
+    When I click the cart icon
+    Then I should be on the Cart page
+    When I click the checkout button
+    And I enter first name "John" and last name "Doe" and postal code "12345"
+    And I click the continue button
+    And I click the finish button
+    Then the checkout complete message should be "Thank you for your order!"
+
+  Scenario Outline: checkout fails when required information is missing
+    When I add the product "Sauce Labs Backpack" to the cart
+    And I click the cart icon
+    Then I should be on the Cart page
+    When I click the checkout button
+    And I enter first name "<firstName>" and last name "<lastName>" and postal code "<postalCode>"
+    And I click the continue button
+    Then I should see the checkout error message "<expectedError>"
+
+    Examples:
+      | firstName | lastName | postalCode | expectedError                   |
+      |           | Doe      | 12345      | Error: First Name is required   |
+      | John      |          | 12345      | Error: Last Name is required    |
+      | John      | Doe      |            | Error: Postal Code is required  |
+</file>
+
+<file path="pages/checkout_page.ts">
+import { Page, Locator } from '@playwright/test';
+
+export class CheckoutPage {
+    readonly page: Page;
+    private readonly checkoutButton: Locator;
+    private readonly firstNameInput: Locator;
+    private readonly lastNameInput: Locator;
+    private readonly postalCodeInput: Locator;
+    private readonly continueButton: Locator;
+    private readonly finishButton: Locator;
+    private readonly completeHeader: Locator;
+    private readonly errorMessage: Locator;
+
+    constructor(page: Page) {
+        this.page = page;
+        this.checkoutButton = page.locator('[data-test="checkout"]');
+        this.firstNameInput = page.locator('[data-test="firstName"]');
+        this.lastNameInput = page.locator('[data-test="lastName"]');
+        this.postalCodeInput = page.locator('[data-test="postalCode"]');
+        this.continueButton = page.locator('[data-test="continue"]');
+        this.finishButton = page.locator('[data-test="finish"]');
+        this.completeHeader = page.locator('[data-test="complete-header"]');
+        // NOT: login sayfasıyla aynı data-test="error" konteyneri kullanılıyor,
+        // inspector'dan bu sayfa özelinde de doğrula.
+        this.errorMessage = page.locator('[data-test="error"]');
+    }
+
+    /**
+     * Alışveriş sepeti sayfasındaki checkout butonuna tıklar.
+     */
+    async clickCheckout() {
+        await this.checkoutButton.click();
+    }
+
+    /**
+     * Müşterinin adını girer.
+     */
+    async enterFirstName(firstName: string) {
+        await this.firstNameInput.fill(firstName);
+    }
+
+    /**
+     * Müşterinin soyadını girer.
+     */
+    async enterLastName(lastName: string) {
+        await this.lastNameInput.fill(lastName);
+    }
+
+    /**
+     * Müşterinin posta kodunu girer.
+     */
+    async enterPostalCode(postalCode: string) {
+        await this.postalCodeInput.fill(postalCode);
+    }
+
+    /**
+     * Ad, soyad ve posta kodunu tek bir metotla girmek için kolaylık sağlar.
+     */
+    async fillCheckoutInformation(firstName: string, lastName: string, postalCode: string) {
+        await this.enterFirstName(firstName);
+        await this.enterLastName(lastName);
+        await this.enterPostalCode(postalCode);
+    }
+
+    /**
+     * Devam et (Continue) butonuna tıklar.
+     */
+    async clickContinue() {
+        await this.continueButton.click();
+    }
+
+    /**
+     * Siparişi tamamla (Finish) butonuna tıklar.
+     */
+    async clickFinish() {
+        await this.finishButton.click();
+    }
+
+    /**
+     * Sipariş tamamlandı mesajını (Complete Header) döndürür.
+     */
+    async getCompleteMessage(): Promise<string> {
+        return (await this.completeHeader.textContent()) || '';
+    }
+
+    /**
+     * Checkout adım 1'de eksik/geçersiz bilgi girildiğinde çıkan hata mesajını döndürür.
+     */
+    async getErrorMessage(): Promise<string> {
+        return (await this.errorMessage.textContent()) || '';
+    }
+}
+</file>
+
+<file path="steps/checkout_steps.ts">
+import { When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { CheckoutPage } from '../pages/checkout_page';
+
+When('I click the checkout button', async function (this: any) {
+    const checkoutPage = new CheckoutPage(this.page);
+    await checkoutPage.clickCheckout();
+});
+
+When('I enter first name {string} and last name {string} and postal code {string}', async function (this: any, firstName: string, lastName: string, postalCode: string) {
+    const checkoutPage = new CheckoutPage(this.page);
+    await checkoutPage.fillCheckoutInformation(firstName, lastName, postalCode);
+});
+
+When('I click the continue button', async function (this: any) {
+    const checkoutPage = new CheckoutPage(this.page);
+    await checkoutPage.clickContinue();
+});
+
+When('I click the finish button', async function (this: any) {
+    const checkoutPage = new CheckoutPage(this.page);
+    await checkoutPage.clickFinish();
+});
+
+Then('the checkout complete message should be {string}', async function (this: any, expectedMessage: string) {
+    const checkoutPage = new CheckoutPage(this.page);
+    const actualMessage = await checkoutPage.getCompleteMessage();
+    expect(actualMessage).toBe(expectedMessage);
+});
+
+Then('I should see the checkout error message {string}', async function (this: any, expectedMessage: string) {
+    const checkoutPage = new CheckoutPage(this.page);
+    const actualMessage = await checkoutPage.getErrorMessage();
+    expect(actualMessage).toContain(expectedMessage);
+});
+</file>
+
+<file path="support/hook.ts">
+import { Before, After, setDefaultTimeout, Status } from '@cucumber/cucumber';
+import { chromium } from '@playwright/test';
+
+// 60 saniye timeout (Global ayar)
+setDefaultTimeout(60 * 1000);
+
+// Test İzolasyonu: Her bir "Scenario" başlamadan önce temiz bir tarayıcı açar.
+Before(async function () {
+    const isCI = process.env.CI ? true : false;
+    
+    // Tarayıcı ve sayfayı doğrudan 'this' (World) bağlamına atıyoruz!
+    this.browser = await chromium.launch({ headless: isCI }); 
+    this.page = await this.browser.newPage();
+});
+
+// Kaynak Yönetimi: Test bitince tarayıcıyı güvenli şekilde kapatır.
+After(async function (scenario) {
+    // YENİ: Eğer senaryo başarısız (FAILED) olduysa ekran görüntüsü al!
+    if (scenario.result?.status === Status.FAILED) {
+        if (this.page) {
+            const screenshot = await this.page.screenshot({ fullPage: true });
+            // Bu satır ekran görüntüsünü hem Allure raporuna hem de HTML raporuna gömer:
+            this.attach(screenshot, 'image/png');
+        }
+    }
+
+    // Tarayıcı ve sayfayı güvenli şekilde kapat
+    if (this.page) await this.page.close();
+    if (this.browser) await this.browser.close();
+});
+</file>
+
+<file path="package.json">
+{
+  "name": "testautomaion",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.0.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
+    "allure-cucumberjs": "^3.10.2",
+    "allure-playwright": "^3.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "node16",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "features/**/*.ts",
+    "steps/**/*.ts",
+    "pages/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+</file>
+
+<file path=".github/workflows/playwright.yml">
+name: E2E BDD Tests Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24 
+        
+    - name: Install dependencies
+      run: npm install # ci yerine install kullanıyoruz
+      
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+      
+    - name: Run BDD tests
+      run: npx cucumber-js
+      
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: cucumber-html-report
+        path: cucumber-report.html
+        retention-days: 30
+</file>
+
+<file path="steps/cart_steps.ts">
+import { When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { InventoryPage } from '../pages/inventory_page';
+
+When('I add the product {string} to the cart', async function (productName: string) {
+    // page yerine this.page kullanıyoruz (World nesnesinden geliyor)
+    const inventory = new InventoryPage(this.page); 
+    await inventory.addProductToCart(productName);
+});
+
+Then('the cart badge should display {string}', async function (expected: string) {
+    const inventory = new InventoryPage(this.page);
+    const badgeText = await inventory.getCartBadgeText();
+    await expect(badgeText).toBe(expected);
+});
+
+When('I click the cart icon', async function () {
+    const inventory = new InventoryPage(this.page);
+    await inventory.goToCart();
+});
+
+When('I add the products {string} and {string} to the cart', async function (productA: string, productB: string) {
+    const inventory = new InventoryPage(this.page);
+    await inventory.addMultipleProductsToCart([productA, productB]);
+});
+
+When('I remove the product {string} from the cart', async function (productName: string) {
+    const inventory = new InventoryPage(this.page);
+    await inventory.removeProductFromCart(productName);
+});
+
+Then('the cart badge should not be visible', async function () {
+    const inventory = new InventoryPage(this.page);
+    await expect(await inventory.isCartBadgeVisible()).toBe(false);
+});
+
+Then('I should be on the Cart page', async function () {
+    // Doğrulama yaparken de this.page kullanıyoruz
+    await expect(this.page).toHaveURL(/.*cart.html/);
+});
+
+Then('the cart should contain {string}', async function (productName: string) {
+    // Sayfadaki elementi bulurken this.page
+    const item = this.page.locator('.inventory_item_name', { hasText: productName });
+    await expect(item).toBeVisible();
+});
+</file>
+
+<file path="pages/inventory_page.ts">
+import { Page, Locator } from '@playwright/test';
+
+export class InventoryPage {
+  readonly page: Page;
+  readonly productImages: Locator;
+  readonly cartIcon: Locator;
+  readonly cartBadge: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.productImages = page.locator('.inventory_item_img img');
+    this.cartIcon = page.locator('.shopping_cart_link');
+    this.cartBadge = page.locator('.shopping_cart_badge');
+  }
+
+  // --- ÜRÜN DETAY METODU (product_detail_steps.ts için) ---
+  async goToProductDetail(productName: string): Promise<void> {
+    const productLink = this.page.locator('.inventory_item_name', { hasText: productName });
+    await productLink.click();
+  }
+
+  // --- SEPET METOTLARI (cart_steps.ts için) ---
+  async addProductToCart(productName: string): Promise<void> {
+    const addButton = this.page.locator(`.inventory_item:has-text("${productName}") button:has-text("Add to cart")`);
+    await addButton.click();
+  }
+
+  async addMultipleProductsToCart(productNames: string[]): Promise<void> {
+    for (const name of productNames) {
+      await this.addProductToCart(name);
+    }
+  }
+
+  async removeProductFromCart(productName: string): Promise<void> {
+    const removeButton = this.page.locator(`.inventory_item:has-text("${productName}") button:has-text("Remove")`);
+    await removeButton.click();
+  }
+
+  async isCartBadgeVisible(): Promise<boolean> {
+    return await this.cartBadge.isVisible();
+  }
+
+  async getCartBadgeText(): Promise<string> {
+    return (await this.cartBadge.textContent()) || '';
+  }
+
+  async goToCart(): Promise<void> {
+    await this.cartIcon.click();
+  }
+
+  // --- PROBLEM USER TESTİ İÇİN METOT ---
+  async getAllProductImageSrcs(): Promise<string[]> {
+    const count = await this.productImages.count();
+    const srcs: string[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const src = await this.productImages.nth(i).getAttribute('src');
+      if (src) {
+        srcs.push(src);
+      }
+    }
+    return srcs;
+  }
+}
+</file>
+
+<file path="steps/login_steps.ts">
+import { Given, When, Then } from '@cucumber/cucumber';
+import { LoginPage } from '../pages/login_page';
+
+// 1. ADIM: Sayfaya Yönlendirme
+Given('I am on the SauceDemo login page', async function () {
+    // World'den gelen this.page'i kullanarak POM nesnesini oluşturuyoruz
+    const loginPage = new LoginPage(this.page);
+    await loginPage.navigate();
+});
+
+// 2. ADIM: Veri Girişi
+When('I enter username {string} and password {string}', async function (username: string, password: string) {
+    const loginPage = new LoginPage(this.page);
+    await loginPage.enterUsername(username);
+    await loginPage.enterPassword(password);
+});
+
+// 3. ADIM: Aksiyon (Tıklama)
+When('I click the login button', async function () {
+    const loginPage = new LoginPage(this.page);
+    await loginPage.clickLogin();
+});
+
+// 4. ADIM: Doğrulama
+Then('I should see {string}', async function (expectedResult: string) {
+    const loginPage = new LoginPage(this.page);
+    
+    if (expectedResult === 'successful login') {
+        await loginPage.verifySuccessfulLogin();
+    } else {
+        const actualError = await loginPage.getErrorMessage();
+        if (!actualError.includes(expectedResult)) {
+            throw new Error(`Beklenen hata mesajı: "${expectedResult}"\nFakat ekranda görünen: "${actualError}"`);
+        }
+    }
+});
+</file>
+
+<file path="cucumber.js">
+// GEÇİCİ TEST: Allure formatter'ı kaldırıp stdout'un çalışıp çalışmadığını doğruluyoruz
+module.exports = {
+  default: {
+    requireModule: ['ts-node/register'],
+    require: [
+      'steps/**/*.ts',
+      'support/**/*.ts'
+    ],
+    format: [
+      'summary',
+      'html:cucumber-report.html'
+    ]
+  }
+}
+</file>
+
+<file path="README.md">
+# SauceDemo E2E Test Framework
+
+![CI](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions/workflows/playwright.yml/badge.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-Playwright-blue)
+![BDD](https://img.shields.io/badge/BDD-Cucumber.js-brightgreen)
+
+Modern web otomasyonu için **Playwright** ve **Cucumber (BDD)** kullanılarak geliştirilmiş, **World Pattern** ile izole edilmiş, sürdürülebilir bir uçtan uca (E2E) test mimarisi.
+
+## 🚀 Projenin Amacı
+
+Bir backend yazılımcısı olarak edindiğim sistem tasarımı ve mimari disiplini, test otomasyonu dünyasına taşıyorum. Bu proje "sadece test yazmak" değil, **ölçeklenebilir, bakımı kolay, CI/CD'ye entegre bir test framework'ü tasarlamak** konusundaki yetkinliğimi göstermek için hazırlanmış bir vitrin projesidir.
+
+## 🛠 Teknik Yetenekler
+
+- **Framework:** Playwright (TypeScript), Cucumber.js (BDD)
+- **Mimari:** Page Object Model (POM), World Pattern (Dependency Injection)
+- **CI/CD:** GitHub Actions — her push'ta otomatik test çalıştırma
+- **Kapsam:** 15+ senaryo, happy path ve edge case'leri birlikte kapsıyor
+  - **Kimlik Doğrulama:** Geçerli/geçersiz giriş, kilitli kullanıcı (`locked_out_user`) senaryosu
+  - **Sepet & Checkout:** Ürün ekleme/çıkarma, eksik bilgiyle checkout validasyonu
+  - **Sıralama (Sorting):** Fiyat ve isme göre veri odaklı (Scenario Outline) doğrulama
+
+## 🏗 Mimari Kararlar
+
+- **World Pattern tercih edildi (Global Scope yerine):** Her senaryonun kendi izole context'inde (page, browser instance, test verisi) çalışmasını sağlamak ve testlerin paralel koşulabilirliğini garanti altına almak için. Global state paylaşımı, paralel çalıştırmada test'ler arası veri sızıntısına yol açabiliyor — World Pattern bunu yapı gereği engelliyor.
+- **Page Object Model:** UI elementlerinin ve etkileşim mantığının step definition'lardan ayrıştırılması; selector değişikliklerinin tek bir yerden yönetilmesi.
+
+## 📊 Test Raporu & CI/CD
+
+CI durumunu ve çalışan test sürecini canlı olarak buradan takip edebilirsiniz:
+👉 [GitHub Actions — Çalışma Geçmişi](https://github.com/ulaskrsln/saucedemo-test-automation-bdd/actions)
+
+<img width="459" height="313" alt="Test raporu 1" src="https://github.com/user-attachments/assets/b1cbe53b-241f-4f71-93df-7d36addd021d" />
+<img width="542" height="251" alt="Test raporu 2" src="https://github.com/user-attachments/assets/b45ded9a-3c7d-46a3-a119-2c0e20b56588" />
+<img width="497" height="332" alt="Test raporu 3" src="https://github.com/user-attachments/assets/a7d0bb60-1530-4c53-98a9-28bcb817d34a" />
+<img width="482" height="241" alt="Test raporu 4" src="https://github.com/user-attachments/assets/5c2d66f5-666a-40bd-8583-b27aa0e42af9" />
+
+## 📂 Klasör Yapısı
+
+```
+├── features/   # BDD Gherkin senaryoları (.feature)
+├── pages/      # Page Object sınıfları
+├── steps/      # Step definition'lar (senaryo implementasyonu)
+├── support/    # World tanımı, hooks, test konfigürasyonu
+└── .github/    # CI/CD workflow (GitHub Actions)
+```
+
+## 🚀 Kurulum & Çalıştırma
+
+```bash
+git clone https://github.com/ulaskrsln/saucedemo-test-automation-bdd.git
+cd saucedemo-test-automation-bdd
+npm install
+npx playwright install
+npx cucumber-js
+```
+
+## 💡 Geliştirme Yaklaşımı
+
+Bu proje **Pair Programming** metodolojisiyle geliştirildi: mimari tasarım, senaryo kapsamı ve kritik kararlar (ör. World Pattern vs. Global Scope) tarafımca alındı; tekrarlı kod blokları (boilerplate) için AI tabanlı asistanlardan (VSCode-Gemini/Copilot) refaktör desteği alındı. AI, düşünme sürecini değil, yazım hızını destekleyen bir araç olarak kullanıldı.
+
+
+## 📫 İletişim
+
+Sorularınız veya geri bildirimleriniz için bir issue açabilir ya da [GitHub profilimden](https://github.com/ulaskrsln) ulaşabilirsiniz.
+</file>
+
+</files>
