@@ -9,7 +9,6 @@ module.exports = {
     format: [
       'summary',
       'html:cucumber-report.html'
-      // 'allure-cucumberjs/reporter'  <-- GEÇİCİ OLARAK KAPALI
     ]
   }
 }
