@@ -16,3 +16,18 @@ Feature: Checkout - Complete purchase
     And I click the continue button
     And I click the finish button
     Then the checkout complete message should be "Thank you for your order!"
+
+  Scenario Outline: checkout fails when required information is missing
+    When I add the product "Sauce Labs Backpack" to the cart
+    And I click the cart icon
+    Then I should be on the Cart page
+    When I click the checkout button
+    And I enter first name "<firstName>" and last name "<lastName>" and postal code "<postalCode>"
+    And I click the continue button
+    Then I should see the checkout error message "<expectedError>"
+
+    Examples:
+      | firstName | lastName | postalCode | expectedError                   |
+      |           | Doe      | 12345      | Error: First Name is required   |
+      | John      |          | 12345      | Error: Last Name is required    |
+      | John      | Doe      |            | Error: Postal Code is required  |

@@ -27,3 +27,9 @@ Then('the checkout complete message should be {string}', async function (this: a
     const actualMessage = await checkoutPage.getCompleteMessage();
     expect(actualMessage).toBe(expectedMessage);
 });
+
+Then('I should see the checkout error message {string}', async function (this: any, expectedMessage: string) {
+    const checkoutPage = new CheckoutPage(this.page);
+    const actualMessage = await checkoutPage.getErrorMessage();
+    expect(actualMessage).toContain(expectedMessage);
+});

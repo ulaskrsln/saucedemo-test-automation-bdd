@@ -9,6 +9,7 @@ export class CheckoutPage {
     private readonly continueButton: Locator;
     private readonly finishButton: Locator;
     private readonly completeHeader: Locator;
+    private readonly errorMessage: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -19,6 +20,9 @@ export class CheckoutPage {
         this.continueButton = page.locator('[data-test="continue"]');
         this.finishButton = page.locator('[data-test="finish"]');
         this.completeHeader = page.locator('[data-test="complete-header"]');
+        // NOT: login sayfasıyla aynı data-test="error" konteyneri kullanılıyor,
+        // inspector'dan bu sayfa özelinde de doğrula.
+        this.errorMessage = page.locator('[data-test="error"]');
     }
 
     /**
@@ -77,5 +81,12 @@ export class CheckoutPage {
      */
     async getCompleteMessage(): Promise<string> {
         return (await this.completeHeader.textContent()) || '';
+    }
+
+    /**
+     * Checkout adım 1'de eksik/geçersiz bilgi girildiğinde çıkan hata mesajını döndürür.
+     */
+    async getErrorMessage(): Promise<string> {
+        return (await this.errorMessage.textContent()) || '';
     }
 }
