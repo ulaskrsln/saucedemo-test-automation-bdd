@@ -82,4 +82,11 @@ export class InventoryPage {
     async goToCart() {
         await this.cartIcon.click();
     }
+
+    /**
+     * Verilen ürünün adına tıklayarak ürün detay sayfasına gider.
+     */
+    async goToProductDetail(productName: string) {
+        await this.page.locator('.inventory_item_name', { hasText: productName }).click();
+    }
 }
