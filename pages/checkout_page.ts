@@ -89,4 +89,8 @@ export class CheckoutPage {
     async getErrorMessage(): Promise<string> {
         return (await this.errorMessage.textContent()) || '';
     }
+
+      async getLastNameValue(): Promise<string> {
+        return await this.lastNameInput.inputValue();
+    }
 }
