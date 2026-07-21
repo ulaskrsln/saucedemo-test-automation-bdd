@@ -80,6 +80,9 @@ steps/
   prolem_user_steps.ts
   sorting_steps.ts
 support/
+  ai/
+    groq-client.ts
+    rca-agent.ts
   hook.ts
   world.ts
 tests/
@@ -92,61 +95,12 @@ login_context.md
 package.json
 playwright.config.ts
 README.md
+test-groq-connection.ts
 tsconfig.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path=".github/agents/bdd-test-writer.agent.md">
----
-name: bdd-test-writer
-description: 'Use this agent when you need to add a new BDD/Cucumber test scenario to this project — a .feature file plus the matching page object and step definitions, following the existing Page Object Model + World pattern architecture. Do NOT use this for native Playwright spec files (tests/**); use the playwright-test-generator agent for that.'
-tools:
-  - read
-  - edit
-  - search
-model: Claude Sonnet 4.6
-target: 'vscode'
----
-
-Sen bu projenin BDD/Cucumber mimarisine hakim bir test otomasyon mühendisisin. Görevin,
-verilen bir özellik/senaryo tanımından (kullanıcının doğal dil açıklaması veya
-specs/ altındaki bir test planından) üç parçayı birlikte üretmek:
-
-1. `features/*.feature` — Gherkin senaryosu
-2. `pages/*.ts` — gerekiyorsa yeni page object (varsa mevcut olanı genişlet, yeniden yazma)
-3. `steps/*.ts` — step definitions
-
-# Zorunlu kurallar (repo genelinde .github/copilot-instructions.md ile aynı, burada tekrarı önemlidir)
-
-- Page Object Model zorunlu. Locator'lar page sınıfında `private readonly`.
-- Page sınıflarında iş mantığı assertion'ı YAPILMAZ — assertion step definition'da.
-- Cucumber `World` (`this.page`, `this.browser`) kullanılır, `export/import` ile state
-  paylaşımı YAPILMAZ.
-- Gherkin İngilizce, veri odaklı senaryolarda `Scenario Outline` + `Examples`.
-- Locator olarak `data-test` attribute önceliklidir — CSS class isminden ASLA tahmin etme.
-  Emin değilsen, bilinen SauceDemo data-test değerlerini kullanıcıdan doğrulamasını iste
-  ya da support/login_context.md benzeri referans dosyalara bak.
-
-# İş akışı
-
-1. Önce `features/`, `pages/`, `steps/` altındaki mevcut dosyaları oku — isimlendirme,
-   yorum stili ve yapıyı bu projeden öğren, dışarıdan bir şablon getirme.
-2. Yeni senaryo mevcut bir page'i mi kullanıyor, yoksa yeni page object mı gerekiyor karar ver.
-   Mevcut page'i genişletiyorsan var olan metotları KORU, sadece eksik olanı ekle.
-3. Sırasıyla üret: page object (gerekiyorsa) → feature dosyası → step definitions.
-4. Ambiguous step riskine karşı, yeni step eklemeden önce steps/ klasöründe aynı/benzer
-   step metni olup olmadığını kontrol et.
-5. Üç dosyanın da bu projenin genel dosyasındaki (`ai_instructions.md` / `login_context.md`
-   içeriği artık `.github/copilot-instructions.md` içinde) kurallara uyduğunu son bir
-   kez gözden geçir.
-
-Çıktıyı üretirken kod yazma dışında hiçbir şey yapma — tarayıcıyı açıp canlı doğrulama
-bu agent'ın işi değil (bunun için playwright-test-planner/generator kullanılır). Emin
-olmadığın bir `data-test` değeri varsa, tahmin etmek yerine kullanıcıya sor.
-Feature dosyasını yazdıktan sonra, içindeki her step metnini steps/ klasöründe ara; karşılığı yoksa mutlaka ekle.
-</file>
 
 <file path=".github/agents/copilot-instructions.md">
 # SauceDemo E2E Test Framework — Repo Context
@@ -961,20 +915,131 @@ Then('the product list should be sorted by {string}', async function (sortOption
 });
 </file>
 
-<file path="support/world.ts">
-import { setWorldConstructor, World, IWorldOptions } from '@cucumber/cucumber';
-import { Browser, Page } from '@playwright/test';
+<file path="support/ai/groq-client.ts">
+import 'dotenv/config';
+import Groq from 'groq-sdk';
 
-class CustomWorld extends World {
-    browser!: Browser;
-    page!: Page;
+// API key .env dosyasından okunuyor, kodun içine asla yazılmıyor.
+const apiKey = process.env.GROQ_API_KEY;
 
-    constructor(options: IWorldOptions) {
-        super(options);
+let groqClient: Groq | null = null;
+
+if (apiKey) {
+    groqClient = new Groq({ apiKey });
+} else {
+    console.warn('[groq-client] UYARI: GROQ_API_KEY bulunamadı. .env dosyasını kontrol et. RCA analizi devre dışı kalacak.');
+}
+
+/**
+ * Groq Llama modeline bir prompt gönderir ve yanıtı metin olarak döndürür.
+ *
+ * SAFE-FAIL: Bu fonksiyon KESİNLİKLE hata fırlatmaz (throw etmez). API key
+ * eksikse, Groq servisi yanıt vermezse, rate limit'e takılırsa ya da başka
+ * herhangi bir sorun olursa, sessizce `null` döner. Bunun sebebi: RCA analizi
+ * testin ana akışının bir parçası DEĞİL, yardımcı bir katman. AI analizi
+ * başarısız olduğu için asıl testin (PASSED/FAILED) sonucu etkilenmemeli.
+ *
+ * @param systemPrompt Modelin rolünü/görevini tanımlayan sistem talimatı
+ * @param userPrompt Analiz edilecek asıl içerik (hata detayları, loglar vs.)
+ * @returns Modelin ürettiği metin, ya da bir sorun olduysa null
+ */
+export async function askGroq(systemPrompt: string, userPrompt: string): Promise<string | null> {
+    if (!groqClient) {
+        return null;
+    }
+
+    try {
+        const completion = await groqClient.chat.completions.create({
+            model: 'openai/gpt-oss-120b', // NOT: llama-3.3-70b-versatile deprecated edildi (Haziran 2026), yerine bu önerildi
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.2, // Düşük temperature: tutarlı, "yaratıcı olmayan" teşhis istiyoruz
+            max_tokens: 300,  // Kısa ve öz analiz yeterli, uzun rapor istemiyoruz
+        });
+
+        return completion.choices[0]?.message?.content ?? null;
+    } catch (error) {
+        console.warn('[groq-client] Groq API çağrısı başarısız oldu, RCA analizi bu test için atlanıyor:', error);
+        return null;
+    }
+}
+</file>
+
+<file path="support/ai/rca-agent.ts">
+import { Page } from '@playwright/test';
+import { askGroq } from './groq-client';
+
+const SYSTEM_PROMPT = `Sen kıdemli bir SDET (Software Development Engineer in Test) mimarisin.
+Aşağıdaki test başarısızlığına ait kanıtları incele, hatanın UI'dan mı,
+Backend'den mi yoksa test kurgusundan mı kaynaklandığını 3 cümleyi
+geçmeden Markdown formatında özetle. Emin değilsen tahmin ettiğini belirt,
+kesin konuşma.`;
+
+/**
+ * Sayfanın "hafifletilmiş" özetini çıkarır: URL, başlık ve görünür metnin
+ * ilk 500 karakteri. Tüm HTML yerine bunu kullanmamızın sebebi: LLM'e
+ * gereksiz gürültü değil, teşhis için yeterli bağlamı vermek.
+ *
+ * SAFE-FAIL: Sayfa artık erişilebilir değilse (örn. kapanmışsa) hata
+ * fırlatmaz, bunun yerine açıklayıcı bir metin döner.
+ */
+async function getDomSummary(page: Page): Promise<string> {
+    try {
+        const url = page.url();
+        const title = await page.title();
+        const bodyText = await page.locator('body').innerText();
+        const truncated = bodyText.slice(0, 500).replace(/\s+/g, ' ').trim();
+
+        return `URL: ${url}\nBaşlık: ${title}\nGörünür metin (ilk 500 karakter): ${truncated}`;
+    } catch {
+        return 'DOM özeti alınamadı (sayfa artık erişilebilir olmayabilir).';
     }
 }
 
-setWorldConstructor(CustomWorld);
+/**
+ * Bir test başarısızlığını Groq Llama'ya analiz ettirir.
+ *
+ * @param page Başarısız olan senaryonun Playwright Page nesnesi
+ * @param errorMessage Cucumber'ın verdiği ham hata mesajı/stack trace
+ * @param consoleErrors Before/After hook'larında toplanan JS console hataları
+ * @param failedRequests Before/After hook'larında toplanan 4xx/5xx network istekleri
+ * @returns Markdown formatında kısa bir analiz, ya da bir sorun olduysa null
+ */
+export async function analyzeFailure(
+    page: Page,
+    errorMessage: string,
+    consoleErrors: string[],
+    failedRequests: string[]
+): Promise<string | null> {
+    const domSummary = await getDomSummary(page);
+
+    // Her kategoriden en fazla 5 kayıt alıyoruz — hepsini göndermek
+    // hem token israfı hem de LLM'in en önemli sinyali gürültüde
+    // kaybetmesine sebep olabilir.
+    const consoleSection = consoleErrors.length > 0
+        ? consoleErrors.slice(0, 5).join('\n')
+        : 'Yok';
+
+    const networkSection = failedRequests.length > 0
+        ? failedRequests.slice(0, 5).join('\n')
+        : 'Yok';
+
+    const userPrompt = `## Hata Mesajı
+${errorMessage}
+
+## Sayfa Özeti
+${domSummary}
+
+## Console Hataları (toplam ${consoleErrors.length})
+${consoleSection}
+
+## Başarısız Network İstekleri (toplam ${failedRequests.length})
+${networkSection}`;
+
+    return await askGroq(SYSTEM_PROMPT, userPrompt);
+}
 </file>
 
 <file path="tests/example.spec.ts">
@@ -1145,6 +1210,89 @@ export default defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 });
+</file>
+
+<file path="test-groq-connection.ts">
+// Bu dosya geçici bir doğrulama scripti — Groq bağlantısı çalıştığını
+// gördükten sonra silinebilir, asıl test suitine dahil değil.
+import { askGroq } from './support/ai/groq-client';
+
+async function main() {
+    console.log('Groq bağlantısı test ediliyor...');
+
+    const result = await askGroq(
+        'Sen yardımsever bir asistansın.',
+        'Tek cümleyle: Playwright nedir?'
+    );
+
+    if (result === null) {
+        console.log('❌ Groq bağlantısı BAŞARISIZ oldu. .env dosyasındaki GROQ_API_KEY değerini kontrol et.');
+    } else {
+        console.log('✅ Groq bağlantısı BAŞARILI. Yanıt:');
+        console.log(result);
+    }
+}
+
+main();
+</file>
+
+<file path=".github/agents/bdd-test-writer.agent.md">
+---
+name: bdd-test-writer
+description: 'Use this agent when you need to add a new BDD/Cucumber test scenario to this project — a .feature file plus the matching page object and step definitions, following the existing Page Object Model + World pattern architecture. Do NOT use this for native Playwright spec files (tests/**); use the playwright-test-generator agent for that.'
+tools:
+  - read
+  - edit
+  - search
+  - playwright-test/browser_navigate
+  - playwright-test/browser_snapshot
+mcp-servers:
+  playwright-test:
+    type: stdio
+    command: npx
+    args:
+      - playwright
+      - run-test-mcp-server
+    tools:
+      - "browser_navigate"
+      - "browser_snapshot"---
+
+Sen bu projenin BDD/Cucumber mimarisine hakim bir test otomasyon mühendisisin. Görevin,
+verilen bir özellik/senaryo tanımından (kullanıcının doğal dil açıklaması veya
+specs/ altındaki bir test planından) üç parçayı birlikte üretmek:
+
+1. `features/*.feature` — Gherkin senaryosu
+2. `pages/*.ts` — gerekiyorsa yeni page object (varsa mevcut olanı genişlet, yeniden yazma)
+3. `steps/*.ts` — step definitions
+
+# Zorunlu kurallar (repo genelinde .github/copilot-instructions.md ile aynı, burada tekrarı önemlidir)
+
+- Page Object Model zorunlu. Locator'lar page sınıfında `private readonly`.
+- Page sınıflarında iş mantığı assertion'ı YAPILMAZ — assertion step definition'da.
+- Cucumber `World` (`this.page`, `this.browser`) kullanılır, `export/import` ile state
+  paylaşımı YAPILMAZ.
+- Gherkin İngilizce, veri odaklı senaryolarda `Scenario Outline` + `Examples`.
+- Locator olarak `data-test` attribute önceliklidir — CSS class isminden ASLA tahmin etme.
+  Emin değilsen, bilinen SauceDemo data-test değerlerini kullanıcıdan doğrulamasını iste
+  ya da support/login_context.md benzeri referans dosyalara bak.
+
+# İş akışı
+
+1. Önce `features/`, `pages/`, `steps/` altındaki mevcut dosyaları oku — isimlendirme,
+   yorum stili ve yapıyı bu projeden öğren, dışarıdan bir şablon getirme.
+2. Yeni senaryo mevcut bir page'i mi kullanıyor, yoksa yeni page object mı gerekiyor karar ver.
+   Mevcut page'i genişletiyorsan var olan metotları KORU, sadece eksik olanı ekle.
+3. Sırasıyla üret: page object (gerekiyorsa) → feature dosyası → step definitions.
+4. Ambiguous step riskine karşı, yeni step eklemeden önce steps/ klasöründe aynı/benzer
+   step metni olup olmadığını kontrol et.
+5. Üç dosyanın da bu projenin genel dosyasındaki (`ai_instructions.md` / `login_context.md`
+   içeriği artık `.github/copilot-instructions.md` içinde) kurallara uyduğunu son bir
+   kez gözden geçir.
+
+Çıktıyı üretirken kod yazma dışında hiçbir şey yapma — tarayıcıyı açıp canlı doğrulama
+bu agent'ın işi değil (bunun için playwright-test-planner/generator kullanılır). Emin
+olmadığın bir `data-test` değeri varsa, tahmin etmek yerine kullanıcıya sor.
+Feature dosyasını yazdıktan sonra, içindeki her step metnini steps/ klasöründe ara; karşılığı yoksa mutlaka ekle.
 </file>
 
 <file path="features/cart.feature">
@@ -1341,84 +1489,26 @@ Then('I should see the checkout error message {string}', async function (this: a
 });
 </file>
 
-<file path="support/hook.ts">
-import { Before, After, setDefaultTimeout, Status } from '@cucumber/cucumber';
-import { chromium } from '@playwright/test';
+<file path="support/world.ts">
+import { setWorldConstructor, World, IWorldOptions } from '@cucumber/cucumber';
+import { Browser, Page } from '@playwright/test';
 
-// 60 saniye timeout (Global ayar)
-setDefaultTimeout(60 * 1000);
+export class CustomWorld extends World {
+    browser!: Browser;
+    page!: Page;
 
-// Test İzolasyonu: Her bir "Scenario" başlamadan önce temiz bir tarayıcı açar.
-Before(async function () {
-    const isCI = process.env.CI ? true : false;
-    
-    // Tarayıcı ve sayfayı doğrudan 'this' (World) bağlamına atıyoruz!
-    this.browser = await chromium.launch({ headless: isCI }); 
-    this.page = await this.browser.newPage();
-});
+    // YENİ: RCA (Kök Neden Analizi) için kanıt toplama kutuları.
+    // Her senaryo yeni bir CustomWorld örneğiyle başladığı için bunlar
+    // otomatik olarak her seferinde boş başlar, senaryolar arası sızıntı olmaz.
+    consoleErrors: string[] = [];
+    failedRequests: string[] = [];
 
-// Kaynak Yönetimi: Test bitince tarayıcıyı güvenli şekilde kapatır.
-After(async function (scenario) {
-    // YENİ: Eğer senaryo başarısız (FAILED) olduysa ekran görüntüsü al!
-    if (scenario.result?.status === Status.FAILED) {
-        if (this.page) {
-            const screenshot = await this.page.screenshot({ fullPage: true });
-            // Bu satır ekran görüntüsünü hem Allure raporuna hem de HTML raporuna gömer:
-            this.attach(screenshot, 'image/png');
-        }
+    constructor(options: IWorldOptions) {
+        super(options);
     }
-
-    // Tarayıcı ve sayfayı güvenli şekilde kapat
-    if (this.page) await this.page.close();
-    if (this.browser) await this.browser.close();
-});
-</file>
-
-<file path="package.json">
-{
-  "name": "testautomaion",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "@cucumber/cucumber": "^13.0.0",
-    "@playwright/test": "^1.61.1",
-    "@types/node": "^26.1.1",
-    "allure-cucumberjs": "^3.10.2",
-    "allure-playwright": "^3.10.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
-  }
 }
-</file>
 
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES6",
-    "module": "CommonJS",
-    "moduleResolution": "node16",
-    "types": ["node"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
-  },
-  "include": [
-    "features/**/*.ts",
-    "steps/**/*.ts",
-    "pages/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
-}
+setWorldConstructor(CustomWorld);
 </file>
 
 <file path=".github/workflows/playwright.yml">
@@ -1506,6 +1596,58 @@ Then('the cart should contain {string}', async function (productName: string) {
     const item = this.page.locator('.inventory_item_name', { hasText: productName });
     await expect(item).toBeVisible();
 });
+</file>
+
+<file path="package.json">
+{
+  "name": "testautomaion",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.0.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
+    "allure-cucumberjs": "^3.10.2",
+    "allure-playwright": "^3.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "groq-sdk": "^1.3.0"
+  }
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "node16",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "features/**/*.ts",
+    "steps/**/*.ts",
+    "pages/**/*.ts",
+    "support/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
 </file>
 
 <file path="pages/inventory_page.ts">
@@ -1611,6 +1753,81 @@ Then('I should see {string}', async function (expectedResult: string) {
             throw new Error(`Beklenen hata mesajı: "${expectedResult}"\nFakat ekranda görünen: "${actualError}"`);
         }
     }
+});
+</file>
+
+<file path="support/hook.ts">
+import { Before, After, setDefaultTimeout, Status } from '@cucumber/cucumber';
+import { chromium, ConsoleMessage, Response } from '@playwright/test';
+import { analyzeFailure } from './ai/rca-agent';
+
+// 60 saniye timeout (Global ayar)
+setDefaultTimeout(60 * 1000);
+
+// Test İzolasyonu: Her bir "Scenario" başlamadan önce temiz bir tarayıcı açar.
+Before(async function () {
+    const isCI = process.env.CI ? true : false;
+
+    // Tarayıcı ve sayfayı doğrudan 'this' (World) bağlamına atıyoruz!
+    this.browser = await chromium.launch({ headless: isCI });
+    this.page = await this.browser.newPage();
+
+    // YENİ: RCA için arka planda sessizce kanıt toplayan dinleyiciler.
+    // Bunlar testin akışını etkilemez, sadece bir şey patlarsa diye
+    // console hatalarını ve başarısız (4xx/5xx) network isteklerini biriktirir.
+    this.page.on('console', (msg: ConsoleMessage) => {
+        if (msg.type() === 'error') {
+            this.consoleErrors.push(msg.text());
+        }
+    });
+
+    this.page.on('response', (response: Response) => {
+        if (response.status() >= 400) {
+            this.failedRequests.push(
+                `${response.request().method()} ${response.url()} -> ${response.status()}`
+            );
+        }
+    });
+});
+
+// Kaynak Yönetimi: Test bitince tarayıcıyı güvenli şekilde kapatır.
+After(async function (scenario) {
+    // Eğer senaryo başarısız (FAILED) olduysa ekran görüntüsü al!
+    if (scenario.result?.status === Status.FAILED) {
+        if (this.page) {
+            const screenshot = await this.page.screenshot({ fullPage: true });
+            // Bu satır ekran görüntüsünü hem Allure raporuna hem de HTML raporuna gömer:
+            this.attach(screenshot, 'image/png');
+
+            // YENİ: Otonom Kök Neden Analizi (RCA) — sayfa hâlâ açıkken çağırıyoruz,
+            // çünkü rca-agent bir DOM özeti çıkarmak için canlı page nesnesine ihtiyaç duyar.
+            const errorMessage = scenario.result?.message ?? 'Hata mesajı bulunamadı.';
+            const analysis = await analyzeFailure(
+                this.page,
+                errorMessage,
+                this.consoleErrors,
+                this.failedRequests
+            );
+
+            const reportText = analysis
+                ? `## 🤖 Otonom Kök Neden Analizi\n\n${analysis}`
+                : '## 🤖 Otonom Kök Neden Analizi\n\n_AI analizi şu an alınamadı (Groq bağlantı sorunu ya da API key eksik olabilir)._';
+
+            // Rapora ekle (Allure/HTML formatter ileride bunu render edebilir).
+            this.attach(reportText, 'text/plain');
+
+            // YENİ: HTML formatter'ın attachment render'ı garanti olmadığı için,
+            // terminale de basıyoruz — bu, hiçbir render belirsizliği olmayan
+            // tek kanal.
+            console.log('\n' + '='.repeat(60));
+            console.log(reportText);
+            console.log('='.repeat(60) + '\n');
+        }
+    }
+
+    // Tarayıcı ve sayfayı güvenli şekilde kapat
+    if (this.page) await this.page.close();
+    if (this.browser) await this.browser.close();
 });
 </file>
 

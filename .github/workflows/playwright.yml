@@ -26,6 +26,9 @@ jobs:
       
     - name: Run BDD tests
       run: npx cucumber-js
+
+    - name: Run BDD tests
+      run: npx cucumber-js --parallel 3
       
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}

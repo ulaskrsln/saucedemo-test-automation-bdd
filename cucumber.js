@@ -1,4 +1,3 @@
-// GEÇİCİ TEST: Allure formatter'ı kaldırıp stdout'un çalışıp çalışmadığını doğruluyoruz
 module.exports = {
   default: {
     requireModule: ['ts-node/register'],
