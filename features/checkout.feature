@@ -15,7 +15,7 @@ Feature: Checkout - Complete purchase
     And I enter first name "John" and last name "Doe" and postal code "12345"
     And I click the continue button
     And I click the finish button
-    Then the checkout complete message should be "Thank you for your order!"
+    Then the checkout complete message should be "Thank you for  order!"
 
   Scenario Outline: checkout fails when required information is missing
     When I add the product "Sauce Labs Backpack" to the cart
