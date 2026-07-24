@@ -86,10 +86,15 @@ CI'da da aynı image `container:` olarak kullanılıyor (`.github/workflows/visu
 
 ## 📂 Klasör Yapısı
 ├── features/ # BDD Gherkin senaryoları (.feature)
+
 ├── pages/ # Page Object sınıfları
+
 ├── steps/ # Step definition'lar (senaryo implementasyonu)
+
 ├── support/ # World tanımı, hooks, AI/RCA modülü
+
 ├── tests/ # Native Playwright testleri (visual/ dahil)
+
 └── .github/ # CI/CD workflow'ları, AI agent tanımları
 
 ## 🚀 Kurulum & Çalıştırma
