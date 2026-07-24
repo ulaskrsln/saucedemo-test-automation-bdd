@@ -21,6 +21,7 @@ Bu proje "sadece test yazmak" değil, **ölçeklenebilir, bakımı kolay, CI/CD'
   - **Analiz süreci:** Test başarısız olduğunda, Groq/Llama tabanlı bir RCA (Root Cause Analysis) modülü otomatik teşhis üretiyor — safe-fail tasarımı sayesinde AI analizi asla ana test sonucunu etkilemiyor
 - **Kapsam:** 20+ senaryo — kimlik doğrulama, sepet/checkout, sıralama, burger menü, bilinen kullanıcı tipi anomalileri (`problem_user`, `error_user`, `visual_user`)
 - **Görsel Regresyon:** Playwright `toHaveScreenshot()` ile inventory, cart, checkout, burger-menu sayfalarında piksel bazlı UI testi — Docker üzerinden platform-tutarlı baseline üretimi
+- - **Erişilebilirlik:** axe-core ile WCAG 2.0/2.1 (A/AA) taraması — inventory, login, checkout sayfaları; bilinen ihlaller bilinçli olarak izleniyor, yenileri otomatik yakalanıyor
 
 ## 🏗 Mimari Kararlar
 
@@ -70,6 +71,26 @@ docker run --rm -v "${PWD}:/work" -w /work mcr.microsoft.com/playwright:v1.61.1-
 ```
 
 CI'da da aynı image `container:` olarak kullanılıyor (`.github/workflows/visual-tests.yml`), böylece local doğrulama ile CI ortamı tam örtüşüyor.
+
+## ♿ Erişilebilirlik (Accessibility) Testleri
+
+`tests/accessibility/` altında [axe-core](https://github.com/dequelabs/axe-core) ile WCAG 2.0/2.1 (A/AA) seviyesinde otomatik erişilebilirlik taraması yapılıyor — inventory, login ve checkout sayfaları kapsanıyor.
+
+Görsel regresyon testlerinden farklı bir doğrulama türü: piksel karşılaştırması değil, DOM'un gerçek erişilebilirlik kurallarına (renk kontrastı, form label'ları, ARIA attribute'ları vb.) uygunluğu taranıyor.
+
+**Yaklaşım — "sıfır tolerans" değil, "bilinçli sınır":**
+
+```typescript
+const seriousOrCritical = results.violations.filter(
+  (v) => v.impact === 'serious' || v.impact === 'critical'
+);
+```
+
+Sadece `serious`/`critical` seviyesindeki ihlaller test'i kırıyor (`minor`/`moderate` gürültü olarak ele alınmıyor). Inventory sayfasında bilinen bir ihlal var (`select-name` — sıralama dropdown'unun erişilebilir bir ismi yok, uygulama kodu bizim kontrolümüzde değil); bu görmezden gelinmiyor, `knownViolations` listesinde açıkça belirtilip test suit'inin bunu **beklenen** olarak işlemesi sağlanıyor — yeni bir ihlal eklenirse test yine de kırmızı olur.
+
+```bash
+npx playwright test tests/accessibility --project=chromium
+```
 
 ## 📊 Test Raporu & CI/CD
 
