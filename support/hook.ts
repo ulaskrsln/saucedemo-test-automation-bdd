@@ -13,7 +13,7 @@ Before(async function () {
     this.browser = await chromium.launch({ headless: isCI });
     this.page = await this.browser.newPage();
 
-    // YENİ: RCA için arka planda sessizce kanıt toplayan dinleyiciler.
+    // RCA için arka planda sessizce kanıt toplayan dinleyiciler.
     // Bunlar testin akışını etkilemez, sadece bir şey patlarsa diye
     // console hatalarını ve başarısız (4xx/5xx) network isteklerini biriktirir.
     this.page.on('console', (msg: ConsoleMessage) => {
@@ -40,7 +40,7 @@ After(async function (scenario) {
             // Bu satır ekran görüntüsünü hem Allure raporuna hem de HTML raporuna gömer:
             this.attach(screenshot, 'image/png');
 
-            // YENİ: Otonom Kök Neden Analizi (RCA) — sayfa hâlâ açıkken çağırıyoruz,
+            // Otonom Kök Neden Analizi (RCA) — sayfa hâlâ açıkken çağırıyoruz,
             // çünkü rca-agent bir DOM özeti çıkarmak için canlı page nesnesine ihtiyaç duyar.
             const errorMessage = scenario.result?.message ?? 'Hata mesajı bulunamadı.';
             const analysis = await analyzeFailure(
